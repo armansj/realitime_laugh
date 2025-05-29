@@ -2,10 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import '../models/face_detection_service.dart';
+import '../models/score_manager.dart';
 import '../utils/app_theme.dart';
 import '../widgets/debug_panel.dart';
 import '../widgets/progress_bar.dart';
 import '../widgets/celebration_widgets.dart';
+import '../widgets/score_widget.dart';
 import '../main.dart';
 
 class LaughDetectorPageSimple extends StatefulWidget {
@@ -16,24 +18,33 @@ class LaughDetectorPageSimple extends StatefulWidget {
 }
 
 class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
-    with TickerProviderStateMixin {
-  late CameraController _cameraController;
+    with TickerProviderStateMixin {  late CameraController _cameraController;
   late FaceDetectionService _faceDetectionService;
+  ScoreManager? _scoreManager;
   bool _isInitialized = false;
   String _initializationError = '';
-    // Detection state - simple like your working code
+  
+  // Add GlobalKey for ScoreWidget
+  final GlobalKey<ScoreWidgetState> _scoreWidgetKey = GlobalKey<ScoreWidgetState>();
+  // Detection state - simple like your working code
   double _mouthOpen = 0.0;
   double _smileProb = 0.0;
   String _laughLevel = "none";
   double _smileProgress = 0.0;
-    // Timer and animation variables
+  // Timer and animation variables
   DateTime? _progressStartTime;
   bool _showStarAnimation = false;
   bool _gameCompleted = false;
+  bool _gameStarted = false; // Add this to track if game session has started
   int _starsEarned = 0;
+  int _gameScore = 0;
+  bool _showScoreDisplay = false;
   late AnimationController _starAnimationController;
   late AnimationController _starFillController;
   late AnimationController _progressPulseController;
+  late AnimationController _timerController;
+  Timer? _countdownTimer;
+  int _remainingSeconds = 15;
   late Animation<double> _starScaleAnimation;
   late Animation<double> _starFillAnimation;
   late Animation<double> _progressPulseAnimation;
@@ -52,11 +63,10 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
       }
     });
   }
-
-  void _initializeServices() {
+  void _initializeServices() async {
     _faceDetectionService = FaceDetectionService();
-  }
-  void _initializeAnimations() {
+    _scoreManager = await ScoreManager.getInstance();
+  }void _initializeAnimations() {
     _starAnimationController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
@@ -71,6 +81,11 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     )..repeat(reverse: true);
+    
+    _timerController = AnimationController(
+      duration: const Duration(seconds: 15),
+      vsync: this,
+    );
     
     _starScaleAnimation = Tween<double>(
       begin: 0.0,
@@ -145,15 +160,23 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
   }  void _startImageStream() {
     try {
       _cameraController.startImageStream((image) async {
-        // Skip if already processing
-        if (_faceDetectionService.isDetecting) return;
+        // Skip if already processing or game is completed
+        if (_faceDetectionService.isDetecting || _gameCompleted) return;
 
         try {
-          final faceResult = await _faceDetectionService.analyzeFace(image);
-          if (mounted) {
+          final faceResult = await _faceDetectionService.analyzeFace(image);          if (mounted && !_gameCompleted) {
             if (faceResult.isEmpty) {
+              // Only update smile progress, don't reset game session
               _updateSmileProgress(0.0, 0.0, false, false);
             } else {
+              // Start the game session when face is first detected
+              if (!_gameStarted) {
+                setState(() {
+                  _gameStarted = true;
+                  _progressStartTime = DateTime.now();
+                });
+                _startCountdownTimer();
+              }
               _updateSmileProgress(faceResult.smileProb, faceResult.mouthOpen, faceResult.cheekRaised, faceResult.eyeWrinkleDetected);
             }
           }
@@ -165,9 +188,13 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     } catch (e) {
       print('Image stream error: $e');
     }
-  }
-  // Use the exact algorithm from your working code but with more challenging thresholds
+  }// Use the exact algorithm from your working code but with more challenging thresholds
   void _updateSmileProgress(double smileProb, double mouthOpen, bool cheekRaised, bool eyeWrinkleDetected) {
+    // Stop detection if game is completed
+    if (_gameCompleted) {
+      return;
+    }
+
     String laughLevel = "none";
     double step = 0.0;
 
@@ -186,14 +213,7 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     setState(() {
       _mouthOpen = mouthOpen;
       _smileProb = smileProb;
-      _laughLevel = laughLevel;
-
-      if (step > 0 && !_gameCompleted) {
-        // Start timer if not already started
-        if (_progressStartTime == null) {
-          _progressStartTime = DateTime.now();
-        }
-        
+      _laughLevel = laughLevel;      if (step > 0 && !_gameCompleted) {
         _smileProgress += step;
         if (_smileProgress > 1.0) {
           _smileProgress = 1.0;
@@ -204,20 +224,40 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
         _smileProgress -= 0.12; // Slightly reduced decay for more challenge
         if (_smileProgress < 0.0) {
           _smileProgress = 0.0;
-          _progressStartTime = null;
         }
       }
     });
-  }
-
-  void _completeGame() {
+  }  void _completeGame() {
     if (_gameCompleted) return;
+    
+    // Stop the countdown timer
+    _countdownTimer?.cancel();
     
     _gameCompleted = true;
     _starsEarned = _calculateStars();
+    
+    // Calculate score but don't show it yet
+    if (_progressStartTime != null && _scoreManager != null) {
+      final duration = DateTime.now().difference(_progressStartTime!);
+      final completionTime = duration.inSeconds;
+      final laughDuration = (15 - _remainingSeconds).clamp(0, 15);
+        _scoreManager!.addGameScore(
+        starsEarned: _starsEarned,
+        completionTimeSeconds: completionTime,
+        laughDurationSeconds: laughDuration,
+      ).then((score) {
+        setState(() {
+          _gameScore = score;
+          // Don't show score display yet - wait for reset button click
+        });
+        
+        // Refresh the score widget in the app bar
+        _scoreWidgetKey.currentState?.refreshScoreData();
+      });
+    }
+    
     _triggerStarAnimation();
   }
-
   int _calculateStars() {
     if (_progressStartTime == null) return 0;
     
@@ -235,16 +275,60 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     }
   }
 
-  void _resetGame() {
+  void _startCountdownTimer() {
+    _remainingSeconds = 15;
+    _timerController.reset();
+    _timerController.forward();
+    
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds > 0 && !_gameCompleted) {
+        setState(() {
+          _remainingSeconds--;
+        });
+      } else {
+        timer.cancel();
+        if (!_gameCompleted && _smileProgress > 0) {
+          // Time's up - complete with current progress
+          _completeGame();
+        }
+      }
+    });
+  }  void _resetGame() {
+    // If score hasn't been shown yet, show it first
+    if (_gameCompleted && !_showScoreDisplay && _gameScore > 0) {
+      setState(() {
+        _showScoreDisplay = true;
+      });
+      
+      // Auto-reset after showing score for 4 seconds
+      Timer(const Duration(seconds: 4), () {
+        if (mounted) {
+          _actualResetGame();
+        }
+      });
+      return;
+    }
+    
+    // If score is already showing, reset immediately
+    _actualResetGame();
+  }
+    void _actualResetGame() {
+    _countdownTimer?.cancel();
+    _timerController.reset();
     setState(() {
       _smileProgress = 0.0;
       _progressStartTime = null;
       _gameCompleted = false;
+      _gameStarted = false; // Reset game started flag
       _showStarAnimation = false;
       _starsEarned = 0;
+      _gameScore = 0;
+      _showScoreDisplay = false;
       _laughLevel = "none";
+      _remainingSeconds = 15;
     });
-  }  void _triggerStarAnimation() {
+  }void _triggerStarAnimation() {
     setState(() {
       _showStarAnimation = true;
     });
@@ -263,12 +347,13 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
         });
       }
     });
-  }
-  @override
+  }  @override
   void dispose() {
+    _countdownTimer?.cancel();
     _starAnimationController.dispose();
     _starFillController.dispose();
     _progressPulseController.dispose();
+    _timerController.dispose();
     if (_isInitialized && _cameraController.value.isInitialized) {
       _cameraController.dispose();
     }
@@ -285,13 +370,14 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     
     if (!_isInitialized || !_cameraController.value.isInitialized) {
       return _buildLoadingScreen();
-    }
-
-    return Scaffold(
+    }    return Scaffold(
       backgroundColor: AppTheme.primaryYellow,
       appBar: _buildAppBar(),
-      body: Column(
-        children: [
+      body: Column(        children: [
+          // Countdown Timer at the top
+          if (_gameStarted && !_gameCompleted)
+            _buildCountdownTimer(),
+          
           // Camera preview with overlays
           Expanded(
             child: Stack(
@@ -331,14 +417,31 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
                     top: MediaQuery.of(context).size.height * 0.5 - 30,
                     left: MediaQuery.of(context).size.width * 0.5 - 30,
                     child: _buildContinueIconButton(),
-                  ),
-                  // Star rating display with animated filling
+                  ),                // Star rating display with animated filling
                 if (_gameCompleted)
                   Positioned(
-                    bottom: 140,
+                    bottom: _showScoreDisplay ? 200 : 140,
                     left: 16,
                     right: 16,
                     child: _buildStarRating(),
+                  ),
+                
+                // Game score display
+                if (_showScoreDisplay && _gameCompleted)
+                  Positioned(
+                    bottom: 60,
+                    left: 16,
+                    right: 16,
+                    child: GameScoreDisplay(
+                      gameScore: _gameScore,
+                      starsEarned: _starsEarned,
+                      completionTime: _progressStartTime != null 
+                          ? DateTime.now().difference(_progressStartTime!).inSeconds 
+                          : 0,
+                      speedBonus: _starsEarned == 3 && _progressStartTime != null 
+                          ? DateTime.now().difference(_progressStartTime!).inSeconds <= 10 
+                          : false,
+                    ),
                   ),
                 
                 // Star animation overlay
@@ -434,7 +537,6 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
       ),
     );
   }
-
   AppBar _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.amber.shade300,
@@ -454,7 +556,12 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
           ),
         ],
       ),
-      centerTitle: true,
+      centerTitle: true,      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+          child: ScoreWidget(key: _scoreWidgetKey),
+        ),
+      ],
     );
   }
 
@@ -552,8 +659,7 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
         ],
       ),
     );
-  }
-  String _getCompletionMessage() {
+  }  String _getCompletionMessage() {
     switch (_starsEarned) {
       case 3:
         return "Amazing! Perfect laugh! 🎉";
@@ -564,5 +670,67 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
       default:
         return "Keep trying! You can do it! 💪";
     }
+  }
+
+  Widget _buildCountdownTimer() {
+    double progress = _remainingSeconds / 15.0;
+    
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade100.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(25),
+        border: Border.all(color: Colors.amber.shade400, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.amber.withOpacity(0.3),
+            blurRadius: 8,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.timer,
+                color: Colors.brown.shade700,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Time for 3 Stars: ${_remainingSeconds}s',
+                style: TextStyle(
+                  color: Colors.brown.shade800,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 8,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Colors.amber.shade200,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: Colors.transparent,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  progress > 0.3 ? Colors.green : Colors.red.shade400,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
