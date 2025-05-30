@@ -21,7 +21,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late Animation<double> _fadeAnimation;
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
-
+  // Add button animation controllers
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  late AnimationController _buttonPressController;
+  late Animation<double> _buttonScaleAnimation;
   @override
   void initState() {
     super.initState();
@@ -47,16 +51,48 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       curve: Curves.easeOutCubic,
     ));
     
+    // Button pulse animation
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    
+    // Button press animation
+    _buttonPressController = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    _buttonScaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _buttonPressController, curve: Curves.easeInOut),
+    );
+    
     _fadeController.forward();
     _slideController.forward();
+    
+    // Start pulse animation and repeat
+    _pulseController.repeat(reverse: true);
+    
+    // Initialize location on first app load
+    _initializeLocationIfNeeded();
   }
+  
   @override
   void dispose() {
     _fadeController.dispose();
     _slideController.dispose();
+    _pulseController.dispose();
+    _buttonPressController.dispose();
     super.dispose();
   }
-  void _startGame() {
+  
+  void _startGame() async {
+    // Button press animation
+    await _buttonPressController.forward();
+    await _buttonPressController.reverse();
+    
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const LaughDetectorPageSimple()),
@@ -170,64 +206,84 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
       ),
     );
-  }
-  Widget _buildProfileSection(User? user, Map<String, dynamic>? userData) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Profile Picture
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.accentOrange, width: 2),
+  }  Widget _buildProfileSection(User? user, Map<String, dynamic>? userData) {
+    return GestureDetector(
+      onDoubleTap: () => _refreshLocation(),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            child: ClipOval(
-              child: user?.photoURL != null
-                  ? Image.network(
-                      user!.photoURL!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: AppTheme.primaryYellow,
-                          child: const Icon(
-                            Icons.person,
-                            size: 30,
-                            color: Colors.white,
+          ],
+        ),
+        child: Row(
+          children: [            // Profile Picture with Country Flag
+            StreamBuilder<String>(
+              stream: _authService.getUserEmojiProfileStream(),
+              builder: (context, emojiSnapshot) {
+                final countryCode = userData?['countryCode'] ?? 'us';
+                final emojiProfile = emojiSnapshot.data ?? '😂';
+                
+                return Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppTheme.accentOrange, width: 2),
+                  ),
+                  child: Stack(
+                    children: [
+                      // Emoji profile picture
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppTheme.primaryYellow.withOpacity(0.2),
+                        ),
+                        child: Center(
+                          child: Text(
+                            emojiProfile,
+                            style: const TextStyle(fontSize: 28),
                           ),
-                        );
-                      },
-                    )
-                  : Container(
-                      color: AppTheme.primaryYellow,
-                      child: const Icon(
-                        Icons.person,
-                        size: 30,
-                        color: Colors.white,
+                        ),
                       ),
-                    ),
+                      // Country flag in bottom right corner
+                      Positioned(
+                        bottom: -2,
+                        right: -2,
+                        child: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            border: Border.all(color: AppTheme.accentOrange, width: 1.5),
+                          ),
+                          child: Center(
+                            child: Text(
+                              _getCountryFlag(countryCode),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),                      ),
+                    ],
+                  ),
+                );
+              },
             ),
-          ),
-          
-          const SizedBox(width: 15),
+            const SizedBox(width: 15),
             // User Info and Stats
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 Text(
                   userData?['username'] ?? user?.displayName ?? 'Player',
                   style: const TextStyle(
@@ -309,7 +365,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         ],
       ),
+      )
     );
+    
   }
   Widget _buildStatsSection(Map<String, dynamic>? userData) {
     return Container(
@@ -379,52 +437,69 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ],
     );
   }
-
   Widget _buildStartGameButton() {
-    return Container(
-      width: double.infinity,
-      height: 60,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: LinearGradient(
-          colors: [AppTheme.accentOrange, AppTheme.accentOrange.withOpacity(0.8)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.accentOrange.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: _startGame,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-          ),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.play_arrow,
-              size: 28,
+    return AnimatedBuilder(
+      animation: Listenable.merge([_pulseAnimation, _buttonScaleAnimation]),
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _pulseAnimation.value * _buttonScaleAnimation.value,
+          child: Container(
+            width: double.infinity,
+            height: 60,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              gradient: LinearGradient(
+                colors: [AppTheme.accentOrange, AppTheme.accentOrange.withOpacity(0.8)],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.accentOrange.withOpacity(0.4),
+                  blurRadius: 15,
+                  offset: const Offset(0, 4),
+                ),
+                BoxShadow(
+                  color: AppTheme.accentOrange.withOpacity(0.2),
+                  blurRadius: 25,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-            SizedBox(width: 8),
-            Text(
-              'Start Game',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+            child: ElevatedButton(
+              onPressed: _startGame,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.play_arrow,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Start Game',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.rocket_launch,
+                    size: 20,
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -498,8 +573,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
-            ),
-            Text(
+            ),        Text(
               subtitle,
               style: const TextStyle(
                 fontSize: 12,
@@ -510,5 +584,153 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
       ),
     );
+  }
+
+  // Get country flag emoji
+  String _getCountryFlag(String? countryCode) {
+    return _authService.locationService.getCountryFlag(countryCode);
+  }
+
+  // Refresh location data (clear cache and detect fresh location)
+  Future<void> _refreshLocation() async {
+    try {
+      // Show loading indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              SizedBox(width: 16),
+              Text('Refreshing location...'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // Clear cache and get fresh location
+      await _authService.locationService.debugLocationDetection();
+        // Update user document with new location
+      final location = await _authService.locationService.getUserLocation();
+      final user = _authService.currentUser;
+      if (user != null && location['countryCode'] != null) {
+        await _authService.updateUserLocation(location);
+        
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Text('Location updated: ${location['countryName'] ?? 'Unknown'}'),
+                  const SizedBox(width: 8),
+                  Text(
+                    _authService.locationService.getCountryFlag(location['countryCode']),
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Text('Failed to refresh location: $e'),
+              ],
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Initialize location permission and detection on first app load
+  Future<void> _initializeLocationIfNeeded() async {
+    try {
+      // Add a small delay to let the UI settle
+      await Future.delayed(const Duration(milliseconds: 1500));
+        // Check if location has been recently fetched
+      final locationService = _authService.locationService;
+      
+      // If we have no cached location or it's older than 24 hours, request fresh location
+      if (locationService.countryCode == null || locationService.countryCode == 'us') {
+        print('Initializing location detection on app startup...');
+        
+        // Show a subtle notification that we're detecting location
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Text('Detecting your location...'),
+                ],
+              ),
+              duration: Duration(seconds: 3),
+              backgroundColor: Colors.blue,
+            ),
+          );
+        }
+        
+        // Request location permission and get fresh location
+        final location = await _authService.requestLocationPermissionAndGetLocation();
+        
+        // Update user document if location was detected successfully
+        if (location['countryCode'] != null && location['countryCode'] != 'us') {
+          await _authService.updateUserLocation(location);
+          
+          // Show success message
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.location_on, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Text('Location detected: ${location['countryName']}'),
+                    const SizedBox(width: 8),
+                    Text(
+                      _authService.locationService.getCountryFlag(location['countryCode']),
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('Error initializing location: $e');
+      // Don't show error to user as this is a background process
+    }
   }
 }

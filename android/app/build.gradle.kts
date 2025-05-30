@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "com.arman.realtime_laugh"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

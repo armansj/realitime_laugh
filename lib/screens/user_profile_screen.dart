@@ -146,30 +146,27 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                   width: 3,
                                 ),
                               ),
-                              child: ClipOval(
-                                child: user?.photoURL != null
-                                    ? Image.network(
-                                        user!.photoURL!,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return Container(
-                                            color: AppTheme.primaryYellow,
-                                            child: const Icon(
-                                              Icons.person,
-                                              size: 40,
-                                              color: Colors.white,
-                                            ),
-                                          );
-                                        },
-                                      )
-                                    : Container(
-                                        color: AppTheme.primaryYellow,
-                                        child: const Icon(
-                                          Icons.person,
-                                          size: 40,
-                                          color: Colors.white,
-                                        ),
+                              child: ClipOval(                              child: StreamBuilder<String>(
+                                stream: _authService.getUserEmojiProfileStream(),
+                                builder: (context, emojiSnapshot) {
+                                  final emojiProfile = emojiSnapshot.data ?? '😂';
+                                  
+                                  return Container(
+                                    width: 76,
+                                    height: 76,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppTheme.primaryYellow.withOpacity(0.2),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        emojiProfile,
+                                        style: const TextStyle(fontSize: 36),
                                       ),
+                                    ),
+                                  );
+                                },
+                              ),
                               ),
                             ),
                             

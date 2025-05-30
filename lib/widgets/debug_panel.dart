@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../utils/app_theme.dart';
 
 class DebugPanel extends StatelessWidget {
   final double mouthOpen;
@@ -19,36 +18,46 @@ class DebugPanel extends StatelessWidget {
     required this.progress,
     this.gameCompleted = false,
     this.starsEarned = 0,
-  });
-
-  @override
+  });  @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade100.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.amber.shade400, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.amber.withOpacity(0.2),
+            blurRadius: 3,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           _buildHeader(),
-          const SizedBox(height: 8),          _buildStatRow('Mouth Open', mouthOpen.toStringAsFixed(1), Icons.sentiment_satisfied),
+          const SizedBox(height: 4),
+          _buildStatRow('Mouth Open', mouthOpen.toStringAsFixed(1), Icons.sentiment_satisfied),
           _buildStatRow('Smile Prob', '${(smileProb * 100).toStringAsFixed(0)}%', Icons.sentiment_very_satisfied),
-          _buildStatRow('Laugh Level', laughLevel, _getLaughIcon(laughLevel)),          _buildStatRow('Progress', '${(progress * 100).toStringAsFixed(0)}%', Icons.trending_up),
+          _buildStatRow('Laugh Level', laughLevel, _getLaughIcon(laughLevel)),
+          _buildStatRow('Progress', '${(progress * 100).toStringAsFixed(0)}%', Icons.trending_up),
           if (gameCompleted)
             _buildStatRow('Stars', '$starsEarned/3', Icons.star),
         ],
       ),
     );
-  }
-
-  Widget _buildHeader() {
+  }  Widget _buildHeader() {
     return Row(
       children: [
-        Icon(Icons.analytics, color: Colors.brown.shade700, size: 20),
-        const SizedBox(width: 8),
+        Icon(Icons.analytics, color: Colors.brown.shade700, size: 14),
+        const SizedBox(width: 4),
         Text(
           'Detection Stats',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 12,
             fontWeight: FontWeight.bold,
             color: Colors.brown.shade800,
           ),
@@ -59,15 +68,15 @@ class DebugPanel extends StatelessWidget {
 
   Widget _buildStatRow(String label, String value, IconData icon) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 0.5),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: Colors.brown.shade600),
-          const SizedBox(width: 8),
+          Icon(icon, size: 12, color: Colors.brown.shade600),
+          const SizedBox(width: 4),
           Text(
             '$label: ',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 10,
               color: Colors.brown.shade700,
               fontWeight: FontWeight.w500,
             ),
@@ -75,7 +84,7 @@ class DebugPanel extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 10,
               color: Colors.brown.shade800,
               fontWeight: FontWeight.bold,
             ),

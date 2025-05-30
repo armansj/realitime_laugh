@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/auth_service.dart';
+import '../models/emoji_profile_service.dart';
 import '../utils/app_theme.dart';
 
 class UsernameSetupScreen extends StatefulWidget {
@@ -12,18 +13,21 @@ class UsernameSetupScreen extends StatefulWidget {
 class _UsernameSetupScreenState extends State<UsernameSetupScreen>
     with TickerProviderStateMixin {
   final AuthService _authService = AuthService();
+  final EmojiProfileService _emojiService = EmojiProfileService();
   final TextEditingController _usernameController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  String _selectedEmoji = '😂'; // Default emoji
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-
   @override
   void initState() {
-    
     super.initState();
+    
+    // Load saved emoji or use default
+    _loadSelectedEmoji();
     
     // Slide animation for form
     _slideController = AnimationController(
@@ -51,6 +55,21 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen>
     _slideController.forward();
     _fadeController.forward();
   }
+  Future<void> _loadSelectedEmoji() async {
+    final savedEmoji = await _emojiService.getEmojiProfile();
+    setState(() {
+      _selectedEmoji = savedEmoji;
+    });
+  }
+
+  Future<void> _changeProfileEmoji() async {
+    final newEmoji = await _emojiService.showEmojiSelectionDialog(context);
+    if (newEmoji != null) {
+      setState(() {
+        _selectedEmoji = newEmoji;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -75,7 +94,6 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen>
     }
     return null;
   }
-
   Future<void> _saveUsername() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -86,7 +104,9 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen>
     });
 
     try {
+      // Update username and emoji profile
       await _authService.updateUsername(_usernameController.text.trim());
+      await _authService.updateEmojiProfile(_selectedEmoji);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -151,46 +171,54 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen>
                     FadeTransition(
                       opacity: _fadeAnimation,
                       child: Column(
-                        children: [
-                          // Profile picture or avatar
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
+                        children: [                          // Profile emoji with tap to change
+                          GestureDetector(
+                            onTap: _changeProfileEmoji,
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                                border: Border.all(color: AppTheme.accentOrange, width: 3),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _selectedEmoji,
+                                  style: const TextStyle(
+                                    fontSize: 35,
+                                  ),
                                 ),
-                              ],
+                              ),
                             ),
-                            child: ClipOval(
-                              child: user?.photoURL != null
-                                  ? Image.network(
-                                      user!.photoURL!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Container(
-                                          color: AppTheme.primaryYellow,
-                                          child: const Icon(
-                                            Icons.person,
-                                            size: 40,
-                                            color: Colors.white,
-                                          ),
-                                        );
-                                      },
-                                    )
-                                  : Container(
-                                      color: AppTheme.primaryYellow,
-                                      child: const Icon(
-                                        Icons.person,
-                                        size: 40,
-                                        color: Colors.white,
-                                      ),
-                                    ),
+                          ),
+                          
+                          const SizedBox(height: 8),
+                          
+                          GestureDetector(
+                            onTap: _changeProfileEmoji,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.white.withOpacity(0.3)),
+                              ),
+                              child: const Text(
+                                'Tap to change emoji',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
                           ),
                           

@@ -50,9 +50,13 @@ class _SettingsPageState extends State<SettingsPage> {
           children: [
             // Profile Section
             _buildSection(
-              title: 'Profile',
-              children: [
-                _buildProfileTile(user),
+              title: 'Profile',              children: [
+                _buildProfileTile(user),                _buildListTile(
+                  icon: Icons.emoji_emotions,
+                  title: 'Change Profile Emoji',
+                  subtitle: 'Update your profile emoji',
+                  onTap: () => _changeProfileEmoji(),
+                ),
                 _buildListTile(
                   icon: Icons.edit,
                   title: 'Edit Username',
@@ -125,8 +129,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             
             const SizedBox(height: 20),
-            
-            // App Info
+              // App Info
             _buildSection(
               title: 'About',
               children: [
@@ -135,6 +138,12 @@ class _SettingsPageState extends State<SettingsPage> {
                   title: 'App Version',
                   subtitle: '1.0.0',
                   onTap: null,
+                ),
+                _buildListTile(
+                  icon: Icons.location_on,
+                  title: 'Test Location Detection',
+                  subtitle: 'Debug country flag detection',
+                  onTap: () => _testLocationDetection(),
                 ),
                 _buildListTile(
                   icon: Icons.privacy_tip,
@@ -211,81 +220,93 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (context, snapshot) {
         final userData = snapshot.data?.data();
         final username = userData?['username'] ?? user?.displayName ?? 'Player';
-        
-        return ListTile(
-          leading: Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.accentOrange, width: 2),
-            ),
-            child: ClipOval(
-              child: user?.photoURL != null
-                  ? Image.network(
-                      user!.photoURL!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: AppTheme.primaryYellow,
-                          child: const Icon(
-                            Icons.person,
-                            size: 24,
-                            color: Colors.white,
-                          ),
-                        );
-                      },
-                    )
-                  : Container(
-                      color: AppTheme.primaryYellow,
-                      child: const Icon(
-                        Icons.person,
-                        size: 24,
-                        color: Colors.white,
+        final countryCode = userData?['countryCode'];
+        final countryName = userData?['countryName'];        return StreamBuilder<String>(
+          stream: _authService.getUserEmojiProfileStream(),
+          builder: (context, emojiSnapshot) {
+            final emojiProfile = emojiSnapshot.data ?? '😂';
+            
+            return ListTile(
+              leading: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppTheme.accentOrange, width: 2),
+                  color: AppTheme.primaryYellow.withOpacity(0.2),
+                ),
+                child: Center(
+                  child: Text(
+                    emojiProfile,
+                    style: const TextStyle(fontSize: 24),
+                  ),
+                ),
+              ),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      username,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-            ),
-          ),
-          title: Text(
-            username,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user?.email ?? '',
-                style: const TextStyle(fontSize: 14),
-              ),
-              if (userData != null) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.star, size: 16, color: AppTheme.secondaryYellow),
-                    const SizedBox(width: 4),
+                  ),
+                  if (countryCode != null) ...[
                     Text(
-                      '${userData['stars'] ?? 0} stars',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      _authService.locationService.getCountryFlag(countryCode),
+                      style: const TextStyle(fontSize: 20),
                     ),
-                    const SizedBox(width: 12),
-                    Icon(Icons.monetization_on, size: 16, color: AppTheme.accentOrange),
                     const SizedBox(width: 4),
+                  ],
+                ],
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user?.email ?? '',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  if (countryName != null) ...[
+                    const SizedBox(height: 2),
                     Text(
-                      '${userData['money'] ?? 0} coins',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      countryName,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
-                ),
-              ],
-            ],
-          ),
+                  if (userData != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.star, size: 16, color: AppTheme.secondaryYellow),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${userData['stars'] ?? 0} stars',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(width: 12),
+                        Icon(Icons.monetization_on, size: 16, color: AppTheme.accentOrange),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${userData['money'] ?? 0} coins',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
         );
       },
-    );
-  }
+    );  }
 
   Widget _buildListTile({
     required IconData icon,
@@ -385,7 +406,53 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ),
     );
-  }  void _showEditUsernameDialog() async {
+  }  void _changeProfileEmoji() async {
+    try {
+      final selectedEmoji = await _authService.emojiProfileService.showEmojiSelectionDialog(context);
+      
+      if (selectedEmoji != null && mounted) {
+        // Update emoji in Firestore and local storage
+        await _authService.updateEmojiProfile(selectedEmoji);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Text('Profile emoji updated to $selectedEmoji!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+        
+        // Trigger UI refresh
+        setState(() {});
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Error updating profile emoji: ${e.toString()}')),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showEditUsernameDialog() async {
     // Get current user data to show current username
     final userData = await _authService.getUserData();
     final currentUsername = userData?['username'] ?? '';
@@ -637,5 +704,102 @@ class _SettingsPageState extends State<SettingsPage> {
         );
       },
     );
+  }
+  // Test location detection
+  Future<void> _testLocationDetection() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          title: Text('Testing Location Detection'),
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Detecting location...'),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      // Run the debug location detection
+      await _authService.locationService.debugLocationDetection();
+      
+      // Force refresh to get fresh data
+      final location = await _authService.locationService.forceRefreshLocation();
+      
+      // Update user document with fresh location data
+      final user = _authService.currentUser;
+      if (user != null && location['countryCode'] != null) {
+        await _authService.updateUserLocation(location);
+      }
+      
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Location Detection Result'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Country: ${location['countryName'] ?? 'Unknown'}'),
+                  Text('Country Code: ${location['countryCode'] ?? 'Unknown'}'),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Text('Flag: '),
+                      Text(
+                        _authService.locationService.getCountryFlag(location['countryCode']),
+                        style: const TextStyle(fontSize: 24),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Check the debug console for detailed API response.\nLocation has been updated in your profile.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    setState(() {}); // Refresh the UI
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text('Failed to detect location: $e\n\nCheck your internet connection and try again.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );      }
+    }
   }
 }

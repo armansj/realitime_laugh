@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/face_detection_service.dart';
 import '../models/firebase_score_manager.dart';
 import '../models/auth_service.dart';
@@ -10,7 +11,6 @@ import '../widgets/progress_bar.dart';
 import '../widgets/celebration_widgets.dart';
 import '../widgets/score_widget.dart';
 import '../main.dart';
-import 'user_profile_screen.dart';
 
 class LaughDetectorPageSimple extends StatefulWidget {
   const LaughDetectorPageSimple({super.key});
@@ -69,6 +69,9 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     _faceDetectionService = FaceDetectionService();
     _scoreManager = FirebaseScoreManager();
     await _scoreManager!.initialize();
+    
+    // Initialize location service
+    await _authService.locationService.initialize();
   }void _initializeAnimations() {
     _starAnimationController = AnimationController(
       duration: const Duration(milliseconds: 2000),
@@ -322,7 +325,6 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
         return 2;  // 2 money for participation (even if no stars)
     }
   }
-
   void _startCountdownTimer() {
     _remainingSeconds = 15;
     _timerController.reset();
@@ -336,13 +338,13 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
         });
       } else {
         timer.cancel();
-        if (!_gameCompleted && _smileProgress > 0) {
-          // Time's up - complete with current progress
+        if (!_gameCompleted) {
+          // Time's up - always complete the game regardless of progress
           _completeGame();
         }
       }
     });
-  }  void _resetGame() {
+  }void _resetGame() {
     // If score hasn't been shown yet, show it first
     if (_gameCompleted && !_showScoreDisplay && _gameScore > 0) {
       setState(() {
@@ -393,9 +395,10 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
         setState(() {
           _showStarAnimation = false;
         });
-      }
-    });
-  }  @override
+      }    });
+  }
+
+  @override
   void dispose() {
     _countdownTimer?.cancel();
     _starAnimationController.dispose();
@@ -418,40 +421,42 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     
     if (!_isInitialized || !_cameraController.value.isInitialized) {
       return _buildLoadingScreen();
-    }    return Scaffold(
+    }
+    
+    return Scaffold(
       backgroundColor: AppTheme.primaryYellow,
       appBar: _buildAppBar(),
-      body: Column(        children: [
-          // Countdown Timer at the top
-          if (_gameStarted && !_gameCompleted)
-            _buildCountdownTimer(),
-          
-          // Camera preview with overlays
-          Expanded(
-            child: Stack(
-              children: [
-                // Camera preview as base layer
-                _buildCameraPreview(),
-                  // Debug panel overlay
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Countdown Timer at the top
+            if (_gameStarted && !_gameCompleted)
+              _buildCountdownTimer(),
+            
+            // Camera preview with overlays
+            Expanded(
+              child: Stack(
+                children: [
+                  // Camera preview as base layer
+                  _buildCameraPreview(),                  // Debug panel overlay
+                  Positioned(
+                    top: 6,
+                    left: 8,
+                    right: 8,
+                    child: DebugPanel(
+                      mouthOpen: _mouthOpen,
+                      smileProb: _smileProb,
+                      laughLevel: _laughLevel,
+                      startTime: _progressStartTime,
+                      progress: _smileProgress,
+                      gameCompleted: _gameCompleted,
+                      starsEarned: _starsEarned,
+                    ),
+                  ),                  // Progress bar at bottom
                 Positioned(
-                  top: 20,
-                  left: 16,
-                  right: 16,
-                  child: DebugPanel(
-                    mouthOpen: _mouthOpen,
-                    smileProb: _smileProb,
-                    laughLevel: _laughLevel,
-                    startTime: _progressStartTime,
-                    progress: _smileProgress,
-                    gameCompleted: _gameCompleted,
-                    starsEarned: _starsEarned,
-                  ),
-                ),
-                  // Progress bar at bottom
-                Positioned(
-                  bottom: _gameCompleted ? 120 : 60,
-                  left: 16,
-                  right: 16,
+                  bottom: _gameCompleted ? 120 : 50,
+                  left: 12,
+                  right: 12,
                   child: ProgressBar(
                     progress: _smileProgress,
                     laughLevel: _laughLevel,
@@ -468,18 +473,16 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
                   ),                // Star rating display with animated filling
                 if (_gameCompleted)
                   Positioned(
-                    bottom: _showScoreDisplay ? 200 : 140,
-                    left: 16,
-                    right: 16,
+                    bottom: _showScoreDisplay ? 190 : 130,
+                    left: 12,
+                    right: 12,
                     child: _buildStarRating(),
-                  ),
-                
-                // Game score display
+                  ),                // Game score display
                 if (_showScoreDisplay && _gameCompleted)
                   Positioned(
-                    bottom: 60,
-                    left: 16,
-                    right: 16,
+                    bottom: 50,
+                    left: 12,
+                    right: 12,
                     child: GameScoreDisplay(
                       gameScore: _gameScore,
                       starsEarned: _starsEarned,
@@ -505,12 +508,12 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
                   CelebrationWidgets.buildCelebrationMessage(
                     showAnimation: _showStarAnimation,
                     screenHeight: MediaQuery.of(context).size.height,
-                  ),
-              ],
+                  ),              ],
             ),
           ),
         ],
       ),
+      )
     );
   }
 
@@ -584,39 +587,30 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
         ),
       ),
     );
-  }
-  AppBar _buildAppBar() {
+  }  AppBar _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.amber.shade300,
       elevation: 0,
       title: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.sentiment_very_satisfied, color: Colors.brown),
           const SizedBox(width: 8),
           Text(
-            'Laugh Detector',
+            '',
             style: TextStyle(
               color: Colors.brown.shade800,
               fontWeight: FontWeight.bold,
-              fontSize: 20,
+              fontSize: 18,
             ),
           ),
         ],
-      ),      centerTitle: true,
-      actions: [
-        // Profile button
-        IconButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const UserProfileScreen(),
-              ),
-            );
-          },
-          icon: const Icon(Icons.person),
-          tooltip: 'Profile',
+      ),
+      centerTitle: false,      actions: [
+        // Profile picture with country flag
+        Padding(
+          padding: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+          child: _buildProfileWidget(),
         ),
         // Score widget
         Padding(
@@ -626,7 +620,7 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
       ],
     );
   }
-
+  
   Widget _buildCameraPreview() {
     if (!_cameraController.value.isInitialized) {
       return Container(
@@ -641,20 +635,21 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     
     return Positioned.fill(
       child: Container(
-        margin: const EdgeInsets.all(16.0),
+        margin: const EdgeInsets.all(8.0),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.amber.shade400, width: 3),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.amber.shade400, width: 2),
           boxShadow: [
             BoxShadow(
               color: Colors.amber.withOpacity(0.3),
-              blurRadius: 10,
-              spreadRadius: 2,
+              blurRadius: 6,
+              spreadRadius: 1,
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(17),          child: CameraPreview(_cameraController),
+          borderRadius: BorderRadius.circular(12),
+          child: CameraPreview(_cameraController),
         ),
       ),
     );
@@ -684,18 +679,17 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
         ),
       ),
     );
-  }
-  Widget _buildStarRating() {
+  }  Widget _buildStarRating() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.amber.shade100.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.amber.shade400, width: 2),
         boxShadow: [
           BoxShadow(
             color: Colors.amber.withOpacity(0.3),
-            blurRadius: 10,
+            blurRadius: 8,
             spreadRadius: 2,
           ),
         ],
@@ -708,11 +702,11 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
             style: TextStyle(
               color: Colors.brown.shade800,
               fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontSize: 14,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           CelebrationWidgets.buildAnimatedStarFill(
             starsEarned: _starsEarned,
             controller: _starFillController,
@@ -721,7 +715,7 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
         ],
       ),
     );
-  }  String _getCompletionMessage() {
+  }String _getCompletionMessage() {
     switch (_starsEarned) {
       case 3:
         return "Amazing! Perfect laugh! 🎉";
@@ -732,27 +726,26 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
       default:
         return "Keep trying! You can do it! 💪";
     }
-  }
-
-  Widget _buildCountdownTimer() {
+  }  Widget _buildCountdownTimer() {
     double progress = _remainingSeconds / 15.0;
     
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       decoration: BoxDecoration(
         color: Colors.amber.shade100.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.amber.shade400, width: 2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.amber.shade400, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.amber.withOpacity(0.3),
-            blurRadius: 8,
+            color: Colors.amber.withOpacity(0.2),
+            blurRadius: 4,
             spreadRadius: 1,
           ),
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -760,28 +753,28 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
               Icon(
                 Icons.timer,
                 color: Colors.brown.shade700,
-                size: 24,
+                size: 16,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               Text(
                 'Time for 3 Stars: ${_remainingSeconds}s',
                 style: TextStyle(
                   color: Colors.brown.shade800,
                   fontWeight: FontWeight.bold,
-                  fontSize: 18,
+                  fontSize: 12,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Container(
-            height: 8,
+            height: 4,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(2),
               color: Colors.amber.shade200,
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(2),
               child: LinearProgressIndicator(
                 value: progress,
                 backgroundColor: Colors.transparent,
@@ -794,5 +787,73 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
         ],
       ),
     );
+  }
+
+  Widget _buildProfileWidget() {
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>?>(
+      stream: _authService.getUserDataStream(),      builder: (context, snapshot) {
+        final userData = snapshot.data?.data();
+        final countryCode = userData?['countryCode'] ?? 'us';        return StreamBuilder<String>(
+          stream: _authService.getUserEmojiProfileStream(),
+          builder: (context, emojiSnapshot) {
+            final emojiProfile = emojiSnapshot.data ?? '😂';
+            
+            return Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.brown.shade600, width: 2),
+                color: Colors.amber.shade200,
+              ),
+              child: Stack(
+                children: [
+                  // Emoji profile picture
+                  Center(
+                    child: Text(
+                      emojiProfile,
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                  ),
+                  // Country flag in bottom right corner
+                  Positioned(
+                    bottom: -2,
+                    right: -2,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        border: Border.all(color: Colors.brown.shade600, width: 1),
+                      ),
+                      child: Center(
+                        child: Text(
+                          _getCountryFlag(countryCode),
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _getCountryFlag(String? countryCode) {
+    if (countryCode == null || countryCode.length != 2) {
+      return '🌍'; // Default world emoji
+    }
+    
+    // Convert country code to flag emoji
+    final flag = countryCode.toUpperCase().split('').map((char) {
+      return String.fromCharCode(0x1F1E6 + char.codeUnitAt(0) - 0x41);
+    }).join('');
+    
+    return flag;
   }
 }

@@ -1,20 +1,27 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'location_service.dart';
+import 'emoji_profile_service.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
-
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
   );
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
+  final LocationService _locationService = LocationService();
+  final EmojiProfileService _emojiProfileService = EmojiProfileService();
   // Get current user
   User? get currentUser => _auth.currentUser;
+  // Get location service
+  LocationService get locationService => _locationService;
+  
+  // Get emoji profile service
+  EmojiProfileService get emojiProfileService => _emojiProfileService;
 
   // Stream of auth changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -58,8 +65,7 @@ class AuthService {
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       
       print('Firebase sign-in successful: ${userCredential.user?.email}');
-      
-      // Create or update user document in Firestore
+        // Create or update user document in Firestore
       if (userCredential.user != null) {
         await _createOrUpdateUserDocument(userCredential.user!);
       }
@@ -86,13 +92,14 @@ class AuthService {
       print('Error signing out: $e');
       rethrow;
     }
-  }
-
-  // Create or update user document in Firestore
+  }  // Create or update user document in Firestore
   Future<void> _createOrUpdateUserDocument(User user) async {
     try {
       final userDoc = _firestore.collection('users').doc(user.uid);
       final docSnapshot = await userDoc.get();
+      
+      // Get user location with permission request
+      final locationData = await requestLocationPermissionAndGetLocation();
       
       if (!docSnapshot.exists) {        // Create new user document
         await userDoc.set({
@@ -108,19 +115,23 @@ class AuthService {
           'totalLaughTime': 0,
           'stars': 100, // Starting stars
           'money': 50,  // Starting money
+          'countryCode': locationData['countryCode'],
+          'countryName': locationData['countryName'],
           'createdAt': FieldValue.serverTimestamp(),
           'lastLoginAt': FieldValue.serverTimestamp(),
         });
       } else {
-        // Update last login time
+        // Update last login time and location (in case user moved)
         await userDoc.update({
           'lastLoginAt': FieldValue.serverTimestamp(),
+          'countryCode': locationData['countryCode'],
+          'countryName': locationData['countryName'],
         });
       }
     } catch (e) {
       print('Error creating/updating user document: $e');
       rethrow;
-    }  }  // Update username
+    }  }// Update username
   Future<void> updateUsername(String username) async {
     try {
       final user = currentUser;
@@ -139,14 +150,84 @@ class AuthService {
       rethrow;
     }
   }
+  // Update user location
+  Future<void> updateUserLocation(Map<String, dynamic> locationData) async {
+    try {
+      final user = currentUser;
+      if (user != null) {
+        // Ensure user document exists with all required fields
+        await _ensureUserDocumentExists(user);
+        
+        // Update the location data
+        await _firestore.collection('users').doc(user.uid).update({
+          'countryCode': locationData['countryCode'],
+          'countryName': locationData['countryName'],
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      print('Error updating user location: $e');
+      rethrow;
+    }  }
+  
+  // Force refresh GPS location and update user document
+  Future<Map<String, String?>> forceRefreshUserLocation() async {
+    try {
+      print('Forcing GPS location refresh...');
+      
+      // Clear cache and force fresh GPS detection
+      final location = await _locationService.forceRefreshLocation();
+      
+      // Update user document with fresh location
+      if (currentUser != null && location['countryCode'] != null) {
+        await updateUserLocation(location);
+      }
+      
+      return location;
+    } catch (e) {
+      print('Error forcing GPS location refresh: $e');
+      rethrow;
+    }
+  }
+  
+  // Update emoji profile
+  Future<void> updateEmojiProfile(String emoji) async {
+    try {
+      final user = currentUser;
+      if (user != null) {
+        // Ensure user document exists with all required fields
+        await _ensureUserDocumentExists(user);
+        
+        // Convert emoji to unicode for Firestore storage
+        final unicodeEmoji = _emojiProfileService.emojiToUnicode(emoji);
+        
+        // Update the emoji profile in Firestore (as unicode)
+        await _firestore.collection('users').doc(user.uid).update({
+          'emojiProfile': unicodeEmoji,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        
+        // Store original emoji locally for immediate display
+        await _emojiProfileService.setEmojiProfile(emoji);
+      }
+    } catch (e) {
+      print('Error updating emoji profile: $e');
+      rethrow;
+    }
+  }
 
   // Ensure user document exists with all required fields
   Future<void> _ensureUserDocumentExists(User user) async {
     try {
       final userDoc = _firestore.collection('users').doc(user.uid);
       final docSnapshot = await userDoc.get();
-      
-      if (!docSnapshot.exists) {
+        if (!docSnapshot.exists) {
+        // Get user location
+        final locationData = await _locationService.getUserLocation();
+        
+        // Convert default emoji to unicode for Firestore storage
+        final defaultEmojiUnicode = _emojiProfileService.emojiToUnicode('😂');
+        
         // Create user document with all required fields
         await userDoc.set({
           'uid': user.uid,
@@ -154,6 +235,7 @@ class AuthService {
           'displayName': user.displayName,
           'photoURL': user.photoURL,
           'username': '', // Will be set by updateUsername
+          'emojiProfile': defaultEmojiUnicode, // Default emoji profile as unicode
           'totalScore': 0,
           'userLevel': 1,
           'gamesPlayed': 0,
@@ -161,6 +243,8 @@ class AuthService {
           'totalLaughTime': 0,
           'stars': 100, // Starting stars
           'money': 50,  // Starting money
+          'countryCode': locationData['countryCode'],
+          'countryName': locationData['countryName'],
           'createdAt': FieldValue.serverTimestamp(),
           'lastLoginAt': FieldValue.serverTimestamp(),
         });
@@ -353,6 +437,66 @@ class AuthService {
     } catch (e) {
       print('Error resetting user stats: $e');
       rethrow;
+    }
+  }
+
+  // Get user's emoji profile (converts from unicode if needed)
+  Future<String> getUserEmojiProfile() async {
+    try {
+      final user = currentUser;
+      if (user != null) {
+        final docSnapshot = await _firestore.collection('users').doc(user.uid).get();
+        final userData = docSnapshot.data();
+        
+        if (userData != null && userData['emojiProfile'] != null) {
+          final storedEmoji = userData['emojiProfile'] as String;
+          // Convert from unicode if needed, otherwise return as is
+          return _emojiProfileService.unicodeToEmoji(storedEmoji);
+        }
+      }
+      
+      // Fallback to local storage or default
+      return await _emojiProfileService.getEmojiProfile();
+    } catch (e) {
+      print('Error getting user emoji profile: $e');
+      // Fallback to local storage or default
+      return await _emojiProfileService.getEmojiProfile();
+    }
+  }
+
+  // Stream user's emoji profile (converts from unicode if needed)
+  Stream<String> getUserEmojiProfileStream() {
+    return getUserDataStream().asyncMap((docSnapshot) async {
+      final userData = docSnapshot?.data();
+      
+      if (userData != null && userData['emojiProfile'] != null) {
+        final storedEmoji = userData['emojiProfile'] as String;
+        // Convert from unicode if needed, otherwise return as is
+        return _emojiProfileService.unicodeToEmoji(storedEmoji);
+      }
+      
+      // Fallback to local storage or default
+      return await _emojiProfileService.getEmojiProfile();
+    });
+  }
+
+  // Proactively request location permission and get fresh location
+  Future<Map<String, String?>> requestLocationPermissionAndGetLocation() async {
+    try {
+      print('Requesting location permission and getting fresh location...');
+      
+      // Force a fresh location request which will ask for permissions if needed
+      final location = await _locationService.forceRefreshLocation();
+      
+      print('Location obtained: ${location['countryName']} (${location['countryCode']})');
+      return location;
+    } catch (e) {
+      print('Error requesting location permission: $e');
+      // Return default location if permission is denied or GPS fails
+      return {
+        'countryCode': 'us',
+        'countryName': 'United States',
+      };
     }
   }
 }
