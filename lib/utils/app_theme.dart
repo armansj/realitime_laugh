@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Color constants
-  static const Color primaryYellow = Color(0xFFFFF8E1);
-  static const Color secondaryYellow = Color(0xFFFFF59D);
-  static const Color accentOrange = Color(0xFFFFE0B2);
-  static const Color deepOrange = Color(0xFFFFCC02);
+  // Color constants - More yellowish theme
+  static const Color primaryYellow = Color(0xFFFFF3B0);  // More vibrant yellow
+  static const Color secondaryYellow = Color(0xFFFFEB3B); // Bright yellow
+  static const Color accentOrange = Color(0xFFFFB74D);   // Orange-yellow
+  static const Color deepOrange = Color(0xFFFFA000);     // Deep yellow-orange
 
   static ThemeData get lightTheme {
     return ThemeData(

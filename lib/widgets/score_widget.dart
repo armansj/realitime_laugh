@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/firebase_score_manager.dart';
+import '../models/auth_service.dart';
 import '../utils/app_theme.dart';
 
 class ScoreWidget extends StatefulWidget {
@@ -18,11 +19,13 @@ class ScoreWidget extends StatefulWidget {
 
 class ScoreWidgetState extends State<ScoreWidget> {
   FirebaseScoreManager? _scoreManager;
+  AuthService? _authService;
   int _totalScore = 0;
   int _userLevel = 1;
   double _progressToNextLevel = 0.0;
   int _gamesPlayed = 0;
   int _threeStarGames = 0;
+  int _userMoney = 0;
 
   @override
   void initState() {
@@ -36,13 +39,21 @@ class ScoreWidgetState extends State<ScoreWidget> {
 
   Future<void> _loadScoreData() async {
     _scoreManager = FirebaseScoreManager();
+    _authService = AuthService();
+    
+    // Load score data
     final scores = await _scoreManager!.getCurrentScores();
+    
+    // Load user data including money
+    final userData = await _authService!.getUserData();
+    
     setState(() {
       _totalScore = scores['totalScore'];
       _userLevel = scores['userLevel'];
       _progressToNextLevel = scores['currentLevelProgress'];
       _gamesPlayed = scores['gamesPlayed'];
       _threeStarGames = scores['threeStarGames'];
+      _userMoney = userData?['money'] ?? 0;
     });
     
     // Call the callback if provided
@@ -102,7 +113,7 @@ class ScoreWidgetState extends State<ScoreWidget> {
           ),
           const SizedBox(width: 4),
           Text(
-            '$_totalScore',
+            '$_userMoney',
             style: TextStyle(
               color: Colors.brown.shade800,
               fontWeight: FontWeight.bold,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import '../models/face_detection_service.dart';
 import '../models/firebase_score_manager.dart';
+import '../models/auth_service.dart';
 import '../utils/app_theme.dart';
 import '../widgets/debug_panel.dart';
 import '../widgets/progress_bar.dart';
@@ -22,6 +23,7 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     with TickerProviderStateMixin {  late CameraController _cameraController;
   late FaceDetectionService _faceDetectionService;
   FirebaseScoreManager? _scoreManager;
+  final AuthService _authService = AuthService(); // Add AuthService instance
   bool _isInitialized = false;
   String _initializationError = '';
   
@@ -235,7 +237,9 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     _countdownTimer?.cancel();
     
     _gameCompleted = true;
-    _starsEarned = _calculateStars();    // Calculate score but don't show it yet
+    _starsEarned = _calculateStars();
+
+    // Calculate score but don't show it yet
     if (_progressStartTime != null && _scoreManager != null) {
       final duration = DateTime.now().difference(_progressStartTime!);
       final completionTime = duration.inSeconds.toDouble();
@@ -250,6 +254,17 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
           _gameScore = _calculateGameScore(_starsEarned, completionTime, laughDuration);
           // Don't show score display yet - wait for reset button click
         });
+        
+        // Award money based on stars earned
+        int moneyToAward = _calculateMoneyReward(_starsEarned);
+        if (moneyToAward > 0) {
+          try {
+            await _authService.addMoney(moneyToAward);
+            print('Awarded $moneyToAward money for $_starsEarned stars');
+          } catch (e) {
+            print('Error awarding money: $e');
+          }
+        }
         
         // Refresh the score widget in the app bar
         _scoreWidgetKey.currentState?.refreshScoreData();
@@ -291,8 +306,21 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     
     // Bonus for laugh duration (max 50 points)
     int laughBonus = (laughDuration * 5).round().clamp(0, 50);
-    
-    return baseScore + timeBonus + laughBonus;
+      return baseScore + timeBonus + laughBonus;
+  }
+
+  // Calculate money reward based on stars earned
+  int _calculateMoneyReward(int starsEarned) {
+    switch (starsEarned) {
+      case 3:
+        return 15; // 15 money for 3 stars (excellent performance)
+      case 2:
+        return 10; // 10 money for 2 stars (good performance)
+      case 1:
+        return 5;  // 5 money for 1 star (basic completion)
+      default:
+        return 2;  // 2 money for participation (even if no stars)
+    }
   }
 
   void _startCountdownTimer() {

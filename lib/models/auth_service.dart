@@ -94,8 +94,7 @@ class AuthService {
       final userDoc = _firestore.collection('users').doc(user.uid);
       final docSnapshot = await userDoc.get();
       
-      if (!docSnapshot.exists) {
-        // Create new user document
+      if (!docSnapshot.exists) {        // Create new user document
         await userDoc.set({
           'uid': user.uid,
           'email': user.email,
@@ -107,6 +106,8 @@ class AuthService {
           'gamesPlayed': 0,
           'threeStarGames': 0,
           'totalLaughTime': 0,
+          'stars': 100, // Starting stars
+          'money': 50,  // Starting money
           'createdAt': FieldValue.serverTimestamp(),
           'lastLoginAt': FieldValue.serverTimestamp(),
         });
@@ -119,14 +120,15 @@ class AuthService {
     } catch (e) {
       print('Error creating/updating user document: $e');
       rethrow;
-    }
-  }
-
-  // Update username
+    }  }  // Update username
   Future<void> updateUsername(String username) async {
     try {
       final user = currentUser;
       if (user != null) {
+        // First ensure user document exists with all required fields
+        await _ensureUserDocumentExists(user);
+        
+        // Then update the username
         await _firestore.collection('users').doc(user.uid).update({
           'username': username,
           'updatedAt': FieldValue.serverTimestamp(),
@@ -138,6 +140,36 @@ class AuthService {
     }
   }
 
+  // Ensure user document exists with all required fields
+  Future<void> _ensureUserDocumentExists(User user) async {
+    try {
+      final userDoc = _firestore.collection('users').doc(user.uid);
+      final docSnapshot = await userDoc.get();
+      
+      if (!docSnapshot.exists) {
+        // Create user document with all required fields
+        await userDoc.set({
+          'uid': user.uid,
+          'email': user.email,
+          'displayName': user.displayName,
+          'photoURL': user.photoURL,
+          'username': '', // Will be set by updateUsername
+          'totalScore': 0,
+          'userLevel': 1,
+          'gamesPlayed': 0,
+          'threeStarGames': 0,
+          'totalLaughTime': 0,
+          'stars': 100, // Starting stars
+          'money': 50,  // Starting money
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastLoginAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      print('Error ensuring user document exists: $e');
+      rethrow;
+    }
+  }
   // Update user score data
   Future<void> updateUserScore({
     required int totalScore,
@@ -149,6 +181,9 @@ class AuthService {
     try {
       final user = currentUser;
       if (user != null) {
+        // Ensure user document exists
+        await _ensureUserDocumentExists(user);
+        
         await _firestore.collection('users').doc(user.uid).update({
           'totalScore': totalScore,
           'userLevel': userLevel,
@@ -177,9 +212,7 @@ class AuthService {
       print('Error getting user data: $e');
       rethrow;
     }
-  }
-
-  // Stream user data from Firestore
+  }  // Stream user data from Firestore
   Stream<DocumentSnapshot<Map<String, dynamic>>?> getUserDataStream() {
     final user = currentUser;
     if (user != null) {
@@ -237,6 +270,88 @@ class AuthService {
       return [];
     } catch (e) {
       print('Error getting game history: $e');
+      rethrow;
+    }
+  }
+  // Update user stars and money
+  Future<void> updateStarsAndMoney({
+    required int stars,
+    required int money,
+  }) async {
+    try {
+      final user = currentUser;
+      if (user != null) {
+        // Ensure user document exists
+        await _ensureUserDocumentExists(user);
+        
+        await _firestore.collection('users').doc(user.uid).update({
+          'stars': stars,
+          'money': money,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      print('Error updating stars and money: $e');
+      rethrow;
+    }
+  }
+  // Add stars (e.g., from completing games)
+  Future<void> addStars(int starsToAdd) async {
+    try {
+      final user = currentUser;
+      if (user != null) {
+        // Ensure user document exists
+        await _ensureUserDocumentExists(user);
+        
+        await _firestore.collection('users').doc(user.uid).update({
+          'stars': FieldValue.increment(starsToAdd),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      print('Error adding stars: $e');
+      rethrow;
+    }
+  }
+  // Add money (e.g., from daily rewards)
+  Future<void> addMoney(int moneyToAdd) async {
+    try {
+      final user = currentUser;
+      if (user != null) {
+        // Ensure user document exists
+        await _ensureUserDocumentExists(user);
+        
+        await _firestore.collection('users').doc(user.uid).update({
+          'money': FieldValue.increment(moneyToAdd),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      print('Error adding money: $e');
+      rethrow;
+    }
+  }
+  // Reset user stats (for debugging/admin purposes)
+  Future<void> resetUserStats() async {
+    try {
+      final user = currentUser;
+      if (user != null) {
+        // Ensure user document exists
+        await _ensureUserDocumentExists(user);
+        
+        await _firestore.collection('users').doc(user.uid).update({
+          'totalScore': 0,
+          'userLevel': 1,
+          'gamesPlayed': 0,
+          'threeStarGames': 0,
+          'totalLaughTime': 0,
+          'stars': 100, // Reset to starting amount
+          'money': 50,  // Reset to starting amount
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      print('Error resetting user stats: $e');
       rethrow;
     }
   }
