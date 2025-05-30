@@ -3,7 +3,9 @@ import '../utils/app_theme.dart';
 import 'laugh_detector_page_simple.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  final bool skipToGame;
+  
+  const SplashScreen({super.key, this.skipToGame = false});
 
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -87,8 +89,17 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       curve: Curves.easeInOut,
     ));
   }
-
   void _startAnimations() async {
+    // If skipToGame is true, go directly to game with minimal delay
+    if (widget.skipToGame) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        _navigateToMainApp();
+      }
+      return;
+    }
+    
+    // Normal splash screen animations
     // Start background animation
     _backgroundController.forward();
     
@@ -105,7 +116,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     if (mounted) {
       _navigateToMainApp();
     }
-  }  void _navigateToMainApp() {
+  }void _navigateToMainApp() {
     print("Navigating to LaughDetectorPageSimple...");
     Navigator.pushReplacement(
       context,

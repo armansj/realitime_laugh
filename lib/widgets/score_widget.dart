@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/score_manager.dart';
+import '../models/firebase_score_manager.dart';
 import '../utils/app_theme.dart';
 
 class ScoreWidget extends StatefulWidget {
@@ -17,7 +17,7 @@ class ScoreWidget extends StatefulWidget {
 }
 
 class ScoreWidgetState extends State<ScoreWidget> {
-  ScoreManager? _scoreManager;
+  FirebaseScoreManager? _scoreManager;
   int _totalScore = 0;
   int _userLevel = 1;
   double _progressToNextLevel = 0.0;
@@ -29,20 +29,20 @@ class ScoreWidgetState extends State<ScoreWidget> {
     super.initState();
     _loadScoreData();
   }
-
   // Add method to refresh score data
   Future<void> refreshScoreData() async {
     await _loadScoreData();
   }
 
   Future<void> _loadScoreData() async {
-    _scoreManager = await ScoreManager.getInstance();
+    _scoreManager = FirebaseScoreManager();
+    final scores = await _scoreManager!.getCurrentScores();
     setState(() {
-      _totalScore = _scoreManager!.getTotalScore();
-      _userLevel = _scoreManager!.getUserLevel();
-      _progressToNextLevel = _scoreManager!.getProgressToNextLevel();
-      _gamesPlayed = _scoreManager!.getGamesPlayed();
-      _threeStarGames = _scoreManager!.getThreeStarGames();
+      _totalScore = scores['totalScore'];
+      _userLevel = scores['userLevel'];
+      _progressToNextLevel = scores['currentLevelProgress'];
+      _gamesPlayed = scores['gamesPlayed'];
+      _threeStarGames = scores['threeStarGames'];
     });
     
     // Call the callback if provided

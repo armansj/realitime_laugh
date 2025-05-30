@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "807771854341",
+    "project_id": "realtime-laugh",
+    "storage_bucket": "realtime-laugh.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:807771854341:android:9b95d9fb91f49976d1ae6c",
+        "android_client_info": {
+          "package_name": "com.arman.realtime_laugh"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "807771854341-q2oob51otk5g2km5dtqbkhpq16ip2it1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.arman.realtime_laugh",
+            "certificate_hash": "1ba33df8d5f3872a55883381374844a75b0ea623"
+          }
+        },
+        {
+          "client_id": "807771854341-24mad9sl9lges0l085st9cf83pie0apr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBek7fhUfB-VMzefnk3c9swr-4GGUfuZEg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "807771854341-24mad9sl9lges0l085st9cf83pie0apr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "807771854341-itlqq57bvj32nsbs5v3549h06mk9f3lt.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.realitimeLaugh"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:807771854341:android:c0e98ee27ae49e26d1ae6c",
+        "android_client_info": {
+          "package_name": "com.example.realitime_laugh"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "807771854341-24mad9sl9lges0l085st9cf83pie0apr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBek7fhUfB-VMzefnk3c9swr-4GGUfuZEg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "807771854341-24mad9sl9lges0l085st9cf83pie0apr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "807771854341-itlqq57bvj32nsbs5v3549h06mk9f3lt.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.realitimeLaugh"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -2,13 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import '../models/face_detection_service.dart';
-import '../models/score_manager.dart';
+import '../models/firebase_score_manager.dart';
 import '../utils/app_theme.dart';
 import '../widgets/debug_panel.dart';
 import '../widgets/progress_bar.dart';
 import '../widgets/celebration_widgets.dart';
 import '../widgets/score_widget.dart';
 import '../main.dart';
+import 'user_profile_screen.dart';
 
 class LaughDetectorPageSimple extends StatefulWidget {
   const LaughDetectorPageSimple({super.key});
@@ -20,7 +21,7 @@ class LaughDetectorPageSimple extends StatefulWidget {
 class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     with TickerProviderStateMixin {  late CameraController _cameraController;
   late FaceDetectionService _faceDetectionService;
-  ScoreManager? _scoreManager;
+  FirebaseScoreManager? _scoreManager;
   bool _isInitialized = false;
   String _initializationError = '';
   
@@ -62,10 +63,10 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
         _initCamera();
       }
     });
-  }
-  void _initializeServices() async {
+  }  void _initializeServices() async {
     _faceDetectionService = FaceDetectionService();
-    _scoreManager = await ScoreManager.getInstance();
+    _scoreManager = FirebaseScoreManager();
+    await _scoreManager!.initialize();
   }void _initializeAnimations() {
     _starAnimationController = AnimationController(
       duration: const Duration(milliseconds: 2000),
@@ -234,20 +235,19 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     _countdownTimer?.cancel();
     
     _gameCompleted = true;
-    _starsEarned = _calculateStars();
-    
-    // Calculate score but don't show it yet
+    _starsEarned = _calculateStars();    // Calculate score but don't show it yet
     if (_progressStartTime != null && _scoreManager != null) {
       final duration = DateTime.now().difference(_progressStartTime!);
-      final completionTime = duration.inSeconds;
-      final laughDuration = (15 - _remainingSeconds).clamp(0, 15);
-        _scoreManager!.addGameScore(
+      final completionTime = duration.inSeconds.toDouble();
+      final laughDuration = (15 - _remainingSeconds).clamp(0, 15).toDouble();
+      
+      _scoreManager!.addGameResult(
         starsEarned: _starsEarned,
-        completionTimeSeconds: completionTime,
-        laughDurationSeconds: laughDuration,
-      ).then((score) {
+        completionTime: completionTime,
+        laughDuration: laughDuration,
+      ).then((_) async {
         setState(() {
-          _gameScore = score;
+          _gameScore = _calculateGameScore(_starsEarned, completionTime, laughDuration);
           // Don't show score display yet - wait for reset button click
         });
         
@@ -273,6 +273,26 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     } else {
       return 0; // No stars
     }
+  }
+
+  // Calculate score based on game performance
+  int _calculateGameScore(int starsEarned, double completionTime, double laughDuration) {
+    int baseScore = starsEarned * 100; // 100, 200, or 300 base points
+    
+    // Bonus for completion time (max 50 points)
+    int timeBonus = 0;
+    if (completionTime <= 5) {
+      timeBonus = 50;
+    } else if (completionTime <= 10) {
+      timeBonus = 30;
+    } else if (completionTime <= 15) {
+      timeBonus = 10;
+    }
+    
+    // Bonus for laugh duration (max 50 points)
+    int laughBonus = (laughDuration * 5).round().clamp(0, 50);
+    
+    return baseScore + timeBonus + laughBonus;
   }
 
   void _startCountdownTimer() {
@@ -555,8 +575,22 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
             ),
           ),
         ],
-      ),
-      centerTitle: true,      actions: [
+      ),      centerTitle: true,
+      actions: [
+        // Profile button
+        IconButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const UserProfileScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.person),
+          tooltip: 'Profile',
+        ),
+        // Score widget
         Padding(
           padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
           child: ScoreWidget(key: _scoreWidgetKey),

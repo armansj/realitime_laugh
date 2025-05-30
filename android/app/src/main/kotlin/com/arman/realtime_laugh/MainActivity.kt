@@ -1,4 +1,4 @@
-package com.example.realitime_laugh
+package com.arman.realtime_laugh
 
 import io.flutter.embedding.android.FlutterActivity
 
