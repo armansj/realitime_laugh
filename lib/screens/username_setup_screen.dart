@@ -61,14 +61,76 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen>
       _selectedEmoji = savedEmoji;
     });
   }
-
   Future<void> _changeProfileEmoji() async {
-    final newEmoji = await _emojiService.showEmojiSelectionDialog(context);
+    final newEmoji = await _showDefaultEmojiSelectionDialog(context);
     if (newEmoji != null) {
       setState(() {
         _selectedEmoji = newEmoji;
       });
     }
+  }
+
+  Future<String?> _showDefaultEmojiSelectionDialog(BuildContext context) async {
+    return await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Text('😄'),
+              SizedBox(width: 8),
+              Text('Choose Your Profile'),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 200,
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 5,
+                childAspectRatio: 1,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: EmojiProfileService.defaultEmojis.length,
+              itemBuilder: (context, index) {
+                final emoji = EmojiProfileService.defaultEmojis[index];
+                final isSelected = emoji == _selectedEmoji;
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).pop(emoji);
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected ? Colors.orange : Colors.grey.withOpacity(0.3),
+                        width: isSelected ? 3 : 1,
+                      ),
+                      color: isSelected 
+                        ? Colors.orange.withOpacity(0.1) 
+                        : Colors.blue.withOpacity(0.1),
+                    ),
+                    child: Center(
+                      child: Text(
+                        emoji,
+                        style: const TextStyle(fontSize: 24),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -93,8 +155,7 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen>
       return 'Username can only contain letters, numbers, and underscore';
     }
     return null;
-  }
-  Future<void> _saveUsername() async {
+  }  Future<void> _saveUsername() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -104,8 +165,36 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen>
     });
 
     try {
+      final username = _usernameController.text.trim();
+      
+      // Check if username is available
+      final isAvailable = await _authService.isUsernameAvailable(username);
+      if (!isAvailable) {
+        if (mounted) {        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Username is already taken. Please choose another one.',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+        }
+        return;
+      }
+      
       // Update username and emoji profile
-      await _authService.updateUsername(_usernameController.text.trim());
+      await _authService.updateUsername(username);
       await _authService.updateEmojiProfile(_selectedEmoji);
       
       if (mounted) {
@@ -118,10 +207,15 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen>
         // AuthWrapper will handle navigation automatically
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error saving username: ${e.toString()}'),
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Error saving username: ${e.toString()}')),
+              ],
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -134,13 +228,27 @@ class _UsernameSetupScreenState extends State<UsernameSetupScreen>
       }
     }
   }
-
   @override
   Widget build(BuildContext context) {
     final user = _authService.currentUser;
     
     return Scaffold(
       resizeToAvoidBottomInset: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () async {
+            // Sign out and go back to login screen
+            await _authService.signOut();
+          },
+        ),
+        title: const Text(
+          'Setup Profile',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(

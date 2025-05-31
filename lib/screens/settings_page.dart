@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../models/auth_service.dart';
+import '../models/emoji_profile_service.dart';
 import '../utils/app_theme.dart';
 import '../services/language_service.dart';
 import '../l10n/app_localizations.dart';
@@ -286,7 +287,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     Row(
                       children: [                        Icon(Icons.star, size: 16, color: AppTheme.secondaryYellow),
                         const SizedBox(width: 4),                        Text(
-                          '${userData['stars'] ?? 100} stars',
+                          '${userData['stars'] ?? 5} stars',
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(width: 12),
@@ -407,7 +408,15 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }  void _changeProfileEmoji() async {
     try {
-      final selectedEmoji = await _authService.emojiProfileService.showEmojiSelectionDialog(context);
+      // Get purchased emoji items
+      final purchasedItems = await _authService.getPurchasedItems();
+      
+      // Use the emoji service to get available emojis based on purchases
+      final emojiService = EmojiProfileService();
+      final availableEmojis = emojiService.getAvailableEmojis(purchasedItems);
+      
+      // Show custom emoji selection dialog with only available emojis
+      final selectedEmoji = await _showCustomEmojiSelectionDialog(context, availableEmojis);
       
       if (selectedEmoji != null && mounted) {
         // Update emoji in Firestore and local storage
@@ -449,6 +458,104 @@ class _SettingsPageState extends State<SettingsPage> {
         );
       }
     }
+  }
+
+  Future<String?> _showCustomEmojiSelectionDialog(BuildContext context, List<String> availableEmojis) async {
+    return await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(          title: const Row(
+            children: [
+              Text('😄'),
+              SizedBox(width: 8),
+              Text('Choose Your Profile'),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: availableEmojis.length <= 6 ? 100 : 200,
+            child: availableEmojis.isEmpty 
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.shopping_bag, size: 48, color: Colors.grey),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No emojis available!',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Visit the shop to purchase emoji packs',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                )
+              : GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 6,
+                    childAspectRatio: 1,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
+                  itemCount: availableEmojis.length,
+                  itemBuilder: (context, index) {
+                    final emoji = availableEmojis[index];
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).pop(emoji);
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.grey.withOpacity(0.3),
+                            width: 1,
+                          ),
+                          color: emoji == '😂' 
+                            ? Colors.green.withOpacity(0.1) 
+                            : Colors.blue.withOpacity(0.1),
+                        ),
+                        child: Center(
+                          child: Text(
+                            emoji,
+                            style: const TextStyle(fontSize: 24),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            if (availableEmojis.isEmpty)
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  // Navigate to shop
+                  Navigator.pushNamed(context, '/shop');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentOrange,
+                ),
+                child: const Text('Visit Shop'),
+              ),
+          ],
+        );
+      },
+    );
   }
 
   void _showEditUsernameDialog() async {
@@ -501,21 +608,27 @@ class _SettingsPageState extends State<SettingsPage> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                   );
-                }
-              } catch (e) {
+                }              } catch (e) {
                 print('Error updating username: $e');
                 dialogSetState(() {
                   isLoading = false;
                 });
                 
                 if (mounted) {
+                  String errorMessage = 'Error updating username';
+                  if (e.toString().contains('Username is already taken')) {
+                    errorMessage = 'Username is already taken. Please choose another one.';
+                  } else {
+                    errorMessage = 'Error updating username: ${e.toString()}';
+                  }
+                  
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Row(
                         children: [
                           const Icon(Icons.error, color: Colors.white),
                           const SizedBox(width: 8),
-                          Expanded(child: Text('Error updating username: ${e.toString()}')),
+                          Expanded(child: Text(errorMessage)),
                         ],
                       ),
                       backgroundColor: Colors.red,

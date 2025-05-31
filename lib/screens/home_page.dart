@@ -307,7 +307,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 Row(
                   children: [                    Icon(Icons.star, color: Colors.amber, size: 16),
                     const SizedBox(width: 4),                    Text(
-                      '${userData?['stars'] ?? 100}',
+                      '${userData?['stars'] ?? 5}',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,

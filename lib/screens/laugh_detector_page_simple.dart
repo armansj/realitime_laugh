@@ -12,6 +12,7 @@ import '../widgets/celebration_widgets.dart';
 import '../widgets/score_widget.dart';
 import '../main.dart';
 import '../l10n/app_localizations.dart';
+import '../services/camera_filter_service.dart';
 
 class LaughDetectorPageSimple extends StatefulWidget {
   const LaughDetectorPageSimple({super.key});
@@ -21,10 +22,10 @@ class LaughDetectorPageSimple extends StatefulWidget {
 }
 
 class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
-    with TickerProviderStateMixin {  late CameraController _cameraController;
-  late FaceDetectionService _faceDetectionService;
+    with TickerProviderStateMixin {  late CameraController _cameraController;  late FaceDetectionService _faceDetectionService;
   FirebaseScoreManager? _scoreManager;
   final AuthService _authService = AuthService(); // Add AuthService instance
+  final CameraFilterService _filterService = CameraFilterService(); // Add CameraFilterService instance
   bool _isInitialized = false;
   String _initializationError = '';
   
@@ -696,10 +697,20 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
               spreadRadius: 1,
             ),
           ],
-        ),
-        child: ClipRRect(
+        ),        child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: CameraPreview(_cameraController),
+          child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>?>(
+            stream: _authService.getUserDataStream(),
+            builder: (context, snapshot) {
+              final userData = snapshot.data?.data();
+              final activeFilter = userData?['activeCameraFilter'];
+              
+              return _filterService.applyFilter(
+                CameraPreview(_cameraController),
+                activeFilter,
+              );
+            },
+          ),
         ),
       ),
     );

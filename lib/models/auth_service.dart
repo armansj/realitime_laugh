@@ -108,11 +108,10 @@ class AuthService {
           'photoURL': user.photoURL,
           'username': '', // Will be set later by user
           'totalScore': 0,
-          'userLevel': 1,
-          'gamesPlayed': 0,
+          'userLevel': 1,          'gamesPlayed': 0,
           'threeStarGames': 0,
           'totalLaughTime': 0,
-          'stars': 100, // Starting stars for shop purchases
+          'stars': 5, // Starting stars for shop purchases
           'money': 50,  // Starting money
           'countryCode': locationData['countryCode'],
           'countryName': locationData['countryName'],
@@ -130,13 +129,55 @@ class AuthService {
     } catch (e) {
       print('Error creating/updating user document: $e');
       rethrow;
-    }  }// Update username
+    }  }
+
+  // Check if username is available
+  Future<bool> isUsernameAvailable(String username) async {
+    try {
+      final user = currentUser;
+      
+      // Query for any user with this username
+      final querySnapshot = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: username.trim())
+          .get();
+      
+      // If no documents found, username is available
+      if (querySnapshot.docs.isEmpty) {
+        return true;
+      }
+      
+      // If documents found, check if it belongs to current user (for updates)
+      if (user != null) {
+        final currentUserDoc = querySnapshot.docs.firstWhere(
+          (doc) => doc.id == user.uid,
+          orElse: () => throw StateError('Not found'),
+        );
+        // If the only document is the current user's, username is available for update
+        return querySnapshot.docs.length == 1 && currentUserDoc.id == user.uid;
+      }
+      
+      // Username is taken by someone else
+      return false;
+    } catch (e) {
+      print('Error checking username availability: $e');
+      return false;
+    }
+  }
+
+  // Update username
   Future<void> updateUsername(String username) async {
     try {
       final user = currentUser;
       if (user != null) {
         // First ensure user document exists with all required fields
         await _ensureUserDocumentExists(user);
+        
+        // Check if username is available
+        final isAvailable = await isUsernameAvailable(username);
+        if (!isAvailable) {
+          throw Exception('Username is already taken');
+        }
         
         // Then update the username
         await _firestore.collection('users').doc(user.uid).update({
@@ -235,11 +276,11 @@ class AuthService {
           'username': '', // Will be set by updateUsername
           'emojiProfile': defaultEmojiUnicode, // Default emoji profile as unicode
           'totalScore': 0,
-          'userLevel': 1,
-          'gamesPlayed': 0,
-          'threeStarGames': 0,          'totalLaughTime': 0,
-          'stars': 100, // Starting stars for shop purchases
+          'userLevel': 1,          'gamesPlayed': 0,          'threeStarGames': 0,          'totalLaughTime': 0,
+          'stars': 5, // Starting stars for shop purchases
           'money': 50,  // Starting money
+          'purchasedItems': [], // List of purchased shop items
+          'activeCameraFilter': null, // Currently active camera filter
           'countryCode': locationData['countryCode'],
           'countryName': locationData['countryName'],
           'createdAt': FieldValue.serverTimestamp(),
@@ -416,10 +457,9 @@ class AuthService {
       if (user != null) {
         // Ensure user document exists
         await _ensureUserDocumentExists(user);
-        
-        // Get current user data to check if they have enough stars
+          // Get current user data to check if they have enough stars
         final userData = await getUserData();
-        final currentStars = userData?['stars'] ?? 100;
+        final currentStars = userData?['stars'] ?? 5;
         
         if (currentStars < starsToSpend) {
           return false; // Not enough stars
@@ -481,11 +521,10 @@ class AuthService {
         
         await _firestore.collection('users').doc(user.uid).update({
           'totalScore': 0,
-          'userLevel': 1,
-          'gamesPlayed': 0,
+          'userLevel': 1,          'gamesPlayed': 0,
           'threeStarGames': 0,
           'totalLaughTime': 0,
-          'stars': 100, // Reset to starting amount
+          'stars': 5, // Reset to starting amount
           'money': 50,  // Reset to starting amount
           'updatedAt': FieldValue.serverTimestamp(),
         });
@@ -553,6 +592,100 @@ class AuthService {
         'countryCode': 'us',
         'countryName': 'United States',
       };
+    }
+  }
+
+  // Purchase item methods
+  Future<bool> purchaseItem(String itemId, int price) async {
+    try {
+      final user = currentUser;
+      if (user == null) return false;
+
+      // Check if user has enough stars
+      final userData = await getUserData();
+      final currentStars = userData?['stars'] ?? 0;
+      
+      if (currentStars < price) {
+        return false; // Not enough stars
+      }
+
+      // Get current purchased items
+      final purchasedItems = List<String>.from(userData?['purchasedItems'] ?? []);
+      
+      // Check if already purchased
+      if (purchasedItems.contains(itemId)) {
+        return false; // Already owned
+      }
+
+      // Add item and deduct stars
+      purchasedItems.add(itemId);
+      
+      await _firestore.collection('users').doc(user.uid).update({
+        'purchasedItems': purchasedItems,
+        'stars': FieldValue.increment(-price),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      return true;
+    } catch (e) {
+      print('Error purchasing item: $e');
+      return false;
+    }
+  }
+
+  // Check if user owns an item
+  Future<bool> ownsItem(String itemId) async {
+    try {
+      final userData = await getUserData();
+      final purchasedItems = List<String>.from(userData?['purchasedItems'] ?? []);
+      return purchasedItems.contains(itemId);
+    } catch (e) {
+      print('Error checking item ownership: $e');
+      return false;
+    }
+  }
+
+  // Get all purchased items
+  Future<List<String>> getPurchasedItems() async {
+    try {
+      final userData = await getUserData();
+      return List<String>.from(userData?['purchasedItems'] ?? []);
+    } catch (e) {
+      print('Error getting purchased items: $e');
+      return [];
+    }
+  }
+
+  // Set active profile emoji
+  Future<void> setActiveProfileEmoji(String emoji) async {
+    try {
+      final user = currentUser;
+      if (user != null) {
+        final emojiUnicode = _emojiProfileService.emojiToUnicode(emoji);
+        await _firestore.collection('users').doc(user.uid).update({
+          'emojiProfile': emojiUnicode,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      print('Error setting active profile emoji: $e');
+      rethrow;
+    }
+  }
+
+  // Set active camera filter
+  Future<void> setActiveCameraFilter(String? filterId) async {
+    try {
+      final user = currentUser;
+      if (user != null) {
+        await _firestore.collection('users').doc(user.uid).update({
+          'activeCameraFilter': filterId,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      print('Error setting active camera filter: $e');
+      rethrow;
     }
   }
 }
