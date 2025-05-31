@@ -1,0 +1,323 @@
+{
+  "appTitle": "Laugh Detection",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+  "welcome": "Welcome",
+  "@welcome": {
+    "description": "Welcome message"
+  },
+  "login": "Login",
+  "@login": {
+    "description": "Login button text"
+  },
+  "logout": "Logout",
+  "@logout": {
+    "description": "Logout button text"
+  },
+  "settings": "Settings",
+  "@settings": {
+    "description": "Settings page title"
+  },
+  "shop": "Shop",
+  "@shop": {
+    "description": "Shop page title"
+  },
+  "home": "Home",
+  "@home": {
+    "description": "Home page title"
+  },
+  "profile": "Profile",
+  "@profile": {
+    "description": "Profile page title"
+  },
+  "language": "Language",
+  "@language": {
+    "description": "Language setting label"
+  },
+  "english": "English",
+  "@english": {
+    "description": "English language option"
+  },
+  "german": "German",
+  "@german": {
+    "description": "German language option"
+  },
+  "persian": "Persian",
+  "@persian": {
+    "description": "Persian language option"
+  },
+  "stars": "Stars",
+  "@stars": {
+    "description": "Stars currency label"
+  },
+  "money": "Money",
+  "@money": {
+    "description": "Money currency label"
+  },
+  "coins": "Coins",
+  "@coins": {
+    "description": "Coins currency label"
+  },
+  "purchaseStars": "Purchase Stars",
+  "@purchaseStars": {
+    "description": "Purchase stars section title"
+  },
+  "starPackages": "Star Packages",
+  "@starPackages": {
+    "description": "Star packages section title"
+  },
+  "smallPackage": "Small Package",
+  "@smallPackage": {
+    "description": "Small star package name"
+  },
+  "mediumPackage": "Medium Package",
+  "@mediumPackage": {
+    "description": "Medium star package name"
+  },
+  "largePackage": "Large Package",
+  "@largePackage": {
+    "description": "Large star package name"
+  },
+  "megaPackage": "Mega Package",
+  "@megaPackage": {
+    "description": "Mega star package name"
+  },
+  "purchaseConfirmation": "Purchase Confirmation",
+  "@purchaseConfirmation": {
+    "description": "Purchase confirmation dialog title"
+  },
+  "purchaseConfirmationMessage": "Are you sure you want to purchase {stars} stars for {coins} coins?",
+  "@purchaseConfirmationMessage": {
+    "description": "Purchase confirmation dialog message",
+    "placeholders": {
+      "stars": {
+        "type": "int",
+        "example": "50"
+      },
+      "coins": {
+        "type": "int",
+        "example": "10"
+      }
+    }
+  },
+  "confirm": "Confirm",
+  "@confirm": {
+    "description": "Confirm button text"
+  },
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "Cancel button text"
+  },
+  "purchaseSuccess": "Purchase Successful!",
+  "@purchaseSuccess": {
+    "description": "Purchase success message"
+  },
+  "purchaseSuccessMessage": "You have successfully purchased {stars} stars!",
+  "@purchaseSuccessMessage": {
+    "description": "Purchase success detailed message",
+    "placeholders": {
+      "stars": {
+        "type": "int",
+        "example": "50"
+      }
+    }
+  },
+  "purchaseError": "Purchase Error",
+  "@purchaseError": {
+    "description": "Purchase error dialog title"
+  },
+  "purchaseErrorMessage": "Purchase failed: {error}",
+  "@purchaseErrorMessage": {
+    "description": "Purchase error message",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "example": "Insufficient funds"
+      }
+    }
+  },
+  "insufficientFunds": "Insufficient funds",
+  "@insufficientFunds": {
+    "description": "Insufficient funds error message"
+  },
+  "ok": "OK",
+  "@ok": {
+    "description": "OK button text"
+  },
+  "games": "Games",
+  "@games": {
+    "description": "Games section title"
+  },
+  "play": "Play",
+  "@play": {
+    "description": "Play button text"
+  },
+  "score": "Score",
+  "@score": {
+    "description": "Score label"
+  },
+  "highScore": "High Score",
+  "@highScore": {
+    "description": "High score label"
+  },
+  "level": "Level",
+  "@level": {
+    "description": "Level label"
+  },
+  "achievements": "Achievements",
+  "@achievements": {
+    "description": "Achievements section title"
+  },
+  "statistics": "Statistics",
+  "@statistics": {
+    "description": "Statistics section title"
+  },
+  "totalGamesPlayed": "Total Games Played",
+  "@totalGamesPlayed": {
+    "description": "Total games played statistic"
+  },
+  "totalStarsEarned": "Total Stars Earned",
+  "@totalStarsEarned": {
+    "description": "Total stars earned statistic"
+  },
+  "averageScore": "Average Score",
+  "@averageScore": {
+    "description": "Average score statistic"
+  },
+  "laughDetectionGame": "Laugh Detection Game",
+  "@laughDetectionGame": {
+    "description": "Laugh detection game title"
+  },
+  "startGame": "Start Game",
+  "@startGame": {
+    "description": "Start game button text"
+  },
+  "gameInstructions": "Make yourself laugh to earn points!",
+  "@gameInstructions": {
+    "description": "Game instructions text"
+  },
+  "gameComplete": "Game Complete!",
+  "@gameComplete": {
+    "description": "Game complete message"
+  },
+  "gameResults": "Game Results",
+  "@gameResults": {
+    "description": "Game results title"
+  },
+  "playAgain": "Play Again",
+  "@playAgain": {
+    "description": "Play again button text"  },
+  "backToHome": "Back to Home",
+  "@backToHome": {
+    "description": "Back to home button text"
+  },
+  "notifications": "Notifications",
+  "@notifications": {
+    "description": "Notifications section title"
+  },
+  "about": "About",
+  "@about": {
+    "description": "About section title"
+  },
+  "gameSettings": "Game Settings",
+  "@gameSettings": {
+    "description": "Game settings section title"
+  },
+  "soundEffects": "Sound Effects",
+  "@soundEffects": {
+    "description": "Sound effects setting"
+  },
+  "enableGameSounds": "Enable game sounds",
+  "@enableGameSounds": {
+    "description": "Sound effects description"
+  },
+  "vibration": "Vibration",
+  "@vibration": {
+    "description": "Vibration setting"
+  },
+  "enableHapticFeedback": "Enable haptic feedback",
+  "@enableHapticFeedback": {
+    "description": "Vibration setting description"
+  },
+  "laughSensitivity": "Laugh Sensitivity",
+  "@laughSensitivity": {
+    "description": "Laugh sensitivity setting"
+  },
+  "adjustDetectionSensitivity": "Adjust detection sensitivity",
+  "@adjustDetectionSensitivity": {
+    "description": "Laugh sensitivity description"
+  },
+  "pushNotifications": "Push Notifications",
+  "@pushNotifications": {
+    "description": "Push notifications setting"
+  },
+  "getGameUpdates": "Get game updates",
+  "@getGameUpdates": {
+    "description": "Push notifications description"
+  },
+  "appVersion": "App Version",
+  "@appVersion": {
+    "description": "App version label"
+  },
+  "testLocationDetection": "Test Location Detection",
+  "@testLocationDetection": {
+    "description": "Test location detection option"
+  },
+  "debugCountryFlagDetection": "Debug country flag detection",
+  "@debugCountryFlagDetection": {
+    "description": "Test location detection description"
+  },
+  "privacyPolicy": "Privacy Policy",
+  "@privacyPolicy": {
+    "description": "Privacy policy option"
+  },
+  "viewOurPrivacyPolicy": "View our privacy policy",
+  "@viewOurPrivacyPolicy": {
+    "description": "Privacy policy description"
+  },
+  "changeProfileEmoji": "Change Profile Emoji",
+  "@changeProfileEmoji": {
+    "description": "Change profile emoji option"
+  },
+  "updateYourProfileEmoji": "Update your profile emoji",
+  "@updateYourProfileEmoji": {
+    "description": "Change profile emoji description"
+  },
+  "editUsername": "Edit Username",
+  "@editUsername": {
+    "description": "Edit username option"
+  },  "changeYourDisplayName": "Change your display name",
+  "@changeYourDisplayName": {
+    "description": "Edit username description"
+  },
+  "termsOfService": "Terms of Service",
+  "@termsOfService": {
+    "description": "Terms of service option"
+  },  "viewTermsAndConditions": "View terms and conditions",
+  "@viewTermsAndConditions": {
+    "description": "Terms of service description"
+  },
+  "preparingLaughDetector": "Preparing Laugh Detector...",
+  "@preparingLaughDetector": {
+    "description": "Loading message for laugh detector"
+  },
+  "cameraError": "Camera Error",
+  "@cameraError": {
+    "description": "Camera error title"
+  },
+  "retry": "Retry",
+  "@retry": {
+    "description": "Retry button text"
+  },
+  "timeForThreeStars": "Time for 3 Stars: {seconds}s",
+  "@timeForThreeStars": {
+    "description": "Countdown timer for 3 stars",
+    "placeholders": {
+      "seconds": {
+        "type": "int",
+        "example": "30"
+      }
+    }
+  }
+}

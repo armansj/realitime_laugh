@@ -100,8 +100,7 @@ class AuthService {
       
       // Get user location with permission request
       final locationData = await requestLocationPermissionAndGetLocation();
-      
-      if (!docSnapshot.exists) {        // Create new user document
+        if (!docSnapshot.exists) {        // Create new user document
         await userDoc.set({
           'uid': user.uid,
           'email': user.email,
@@ -113,7 +112,7 @@ class AuthService {
           'gamesPlayed': 0,
           'threeStarGames': 0,
           'totalLaughTime': 0,
-          'stars': 100, // Starting stars
+          'stars': 100, // Starting stars for shop purchases
           'money': 50,  // Starting money
           'countryCode': locationData['countryCode'],
           'countryName': locationData['countryName'],
@@ -227,8 +226,7 @@ class AuthService {
         
         // Convert default emoji to unicode for Firestore storage
         final defaultEmojiUnicode = _emojiProfileService.emojiToUnicode('😂');
-        
-        // Create user document with all required fields
+          // Create user document with all required fields
         await userDoc.set({
           'uid': user.uid,
           'email': user.email,
@@ -239,9 +237,8 @@ class AuthService {
           'totalScore': 0,
           'userLevel': 1,
           'gamesPlayed': 0,
-          'threeStarGames': 0,
-          'totalLaughTime': 0,
-          'stars': 100, // Starting stars
+          'threeStarGames': 0,          'totalLaughTime': 0,
+          'stars': 100, // Starting stars for shop purchases
           'money': 50,  // Starting money
           'countryCode': locationData['countryCode'],
           'countryName': locationData['countryName'],
@@ -378,8 +375,7 @@ class AuthService {
       print('Error updating stars and money: $e');
       rethrow;
     }
-  }
-  // Add stars (e.g., from completing games)
+  }  // Add stars (e.g., from completing games)
   Future<void> addStars(int starsToAdd) async {
     try {
       final user = currentUser;
@@ -410,11 +406,71 @@ class AuthService {
           'updatedAt': FieldValue.serverTimestamp(),
         });
       }
+    } catch (e) {      print('Error adding money: $e');
+      rethrow;
+    }
+  }  // Spend stars (e.g., for shop purchases)
+  Future<bool> spendStars(int starsToSpend) async {
+    try {
+      final user = currentUser;
+      if (user != null) {
+        // Ensure user document exists
+        await _ensureUserDocumentExists(user);
+        
+        // Get current user data to check if they have enough stars
+        final userData = await getUserData();
+        final currentStars = userData?['stars'] ?? 100;
+        
+        if (currentStars < starsToSpend) {
+          return false; // Not enough stars
+        }
+        
+        // Deduct stars from user account
+        await _firestore.collection('users').doc(user.uid).update({
+          'stars': FieldValue.increment(-starsToSpend),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+          return true; // Purchase successful
+      }
+      return false;
     } catch (e) {
-      print('Error adding money: $e');
+      print('Error spending stars: $e');
       rethrow;
     }
   }
+
+  // Purchase stars with money
+  Future<bool> purchaseStars(int starsToBuy, int moneyToSpend) async {
+    try {
+      final user = currentUser;
+      if (user != null) {
+        // Ensure user document exists
+        await _ensureUserDocumentExists(user);
+        
+        // Get current user data to check if they have enough money
+        final userData = await getUserData();
+        final currentMoney = userData?['money'] ?? 50;
+        
+        if (currentMoney < moneyToSpend) {
+          return false; // Not enough money
+        }
+        
+        // Execute the purchase transaction
+        await _firestore.collection('users').doc(user.uid).update({
+          'money': FieldValue.increment(-moneyToSpend),
+          'stars': FieldValue.increment(starsToBuy),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        
+        return true; // Purchase successful
+      }
+      return false;
+    } catch (e) {
+      print('Error purchasing stars: $e');
+      rethrow;
+    }
+  }
+
   // Reset user stats (for debugging/admin purposes)
   Future<void> resetUserStats() async {
     try {

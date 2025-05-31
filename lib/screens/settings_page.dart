@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import '../models/auth_service.dart';
 import '../utils/app_theme.dart';
+import '../services/language_service.dart';
+import '../l10n/app_localizations.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -16,16 +19,16 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _vibrationEnabled = true;
   bool _notificationsEnabled = true;
   double _sensitivity = 0.5;
-
   @override
   Widget build(BuildContext context) {
     final user = _authService.currentUser;
+    final l10n = AppLocalizations.of(context)!;
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Settings',
-          style: TextStyle(
+        title: Text(
+          l10n.settings,
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
@@ -47,57 +50,52 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         child: ListView(
           padding: const EdgeInsets.all(16),
-          children: [
-            // Profile Section
+          children: [            // Profile Section
             _buildSection(
-              title: 'Profile',              children: [
+              title: l10n.profile,
+              children: [
                 _buildProfileTile(user),                _buildListTile(
                   icon: Icons.emoji_emotions,
-                  title: 'Change Profile Emoji',
-                  subtitle: 'Update your profile emoji',
+                  title: l10n.changeProfileEmoji,
+                  subtitle: l10n.updateYourProfileEmoji,
                   onTap: () => _changeProfileEmoji(),
                 ),
                 _buildListTile(
                   icon: Icons.edit,
-                  title: 'Edit Username',
-                  subtitle: 'Change your display name',
+                  title: l10n.editUsername,
+                  subtitle: l10n.changeYourDisplayName,
                   onTap: () => _showEditUsernameDialog(),
                 ),
               ],
             ),
             
-            const SizedBox(height: 20),
-            
-            // Game Settings
+            const SizedBox(height: 20),            // Game Settings
             _buildSection(
-              title: 'Game Settings',
-              children: [
-                _buildSwitchTile(
+              title: l10n.gameSettings,
+              children: [                _buildSwitchTile(
                   icon: Icons.volume_up,
-                  title: 'Sound Effects',
-                  subtitle: 'Enable game sounds',
+                  title: l10n.soundEffects,
+                  subtitle: l10n.enableGameSounds,
                   value: _soundEnabled,
                   onChanged: (value) {
                     setState(() {
                       _soundEnabled = value;
                     });
                   },
-                ),
-                _buildSwitchTile(
+                ),                _buildSwitchTile(
                   icon: Icons.vibration,
-                  title: 'Vibration',
-                  subtitle: 'Enable haptic feedback',
+                  title: l10n.vibration,
+                  subtitle: l10n.enableHapticFeedback,
                   value: _vibrationEnabled,
                   onChanged: (value) {
                     setState(() {
                       _vibrationEnabled = value;
                     });
                   },
-                ),
-                _buildSliderTile(
+                ),                _buildSliderTile(
                   icon: Icons.mic,
-                  title: 'Laugh Sensitivity',
-                  subtitle: 'Adjust detection sensitivity',
+                  title: l10n.laughSensitivity,
+                  subtitle: l10n.adjustDetectionSensitivity,
                   value: _sensitivity,
                   onChanged: (value) {
                     setState(() {
@@ -105,19 +103,25 @@ class _SettingsPageState extends State<SettingsPage> {
                     });
                   },
                 ),
+              ],            ),
+            
+            const SizedBox(height: 20),
+              // Language Settings
+            _buildSection(
+              title: l10n.language,
+              children: [
+                _buildLanguageSelector(),
               ],
             ),
             
             const SizedBox(height: 20),
-            
-            // Notifications
+              // Notifications
             _buildSection(
-              title: 'Notifications',
-              children: [
-                _buildSwitchTile(
+              title: l10n.notifications,
+              children: [                _buildSwitchTile(
                   icon: Icons.notifications,
-                  title: 'Push Notifications',
-                  subtitle: 'Get game updates',
+                  title: l10n.pushNotifications,
+                  subtitle: l10n.getGameUpdates,
                   value: _notificationsEnabled,
                   onChanged: (value) {
                     setState(() {
@@ -128,33 +132,30 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
             
-            const SizedBox(height: 20),
-              // App Info
+            const SizedBox(height: 20),              // App Info
             _buildSection(
-              title: 'About',
-              children: [
-                _buildListTile(
+              title: l10n.about,
+              children: [                _buildListTile(
                   icon: Icons.info,
-                  title: 'App Version',
+                  title: l10n.appVersion,
                   subtitle: '1.0.0',
                   onTap: null,
                 ),
                 _buildListTile(
                   icon: Icons.location_on,
-                  title: 'Test Location Detection',
-                  subtitle: 'Debug country flag detection',
+                  title: l10n.testLocationDetection,
+                  subtitle: l10n.debugCountryFlagDetection,
                   onTap: () => _testLocationDetection(),
                 ),
                 _buildListTile(
                   icon: Icons.privacy_tip,
-                  title: 'Privacy Policy',
-                  subtitle: 'View our privacy policy',
+                  title: l10n.privacyPolicy,
+                  subtitle: l10n.viewOurPrivacyPolicy,
                   onTap: () => _showPrivacyPolicy(),
-                ),
-                _buildListTile(
+                ),                _buildListTile(
                   icon: Icons.description,
-                  title: 'Terms of Service',
-                  subtitle: 'View terms and conditions',
+                  title: l10n.termsOfService,
+                  subtitle: l10n.viewTermsAndConditions,
                   onTap: () => _showTermsOfService(),
                 ),
               ],
@@ -283,11 +284,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   if (userData != null) ...[
                     const SizedBox(height: 4),
                     Row(
-                      children: [
-                        Icon(Icons.star, size: 16, color: AppTheme.secondaryYellow),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${userData['stars'] ?? 0} stars',
+                      children: [                        Icon(Icons.star, size: 16, color: AppTheme.secondaryYellow),
+                        const SizedBox(width: 4),                        Text(
+                          '${userData['stars'] ?? 100} stars',
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(width: 12),
@@ -626,6 +625,117 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             );
           },
+        );
+      },
+    );
+  }
+  Widget _buildLanguageSelector() {
+    final l10n = AppLocalizations.of(context)!;
+    return Consumer<LanguageService>(
+      builder: (context, languageService, child) {
+        return ListTile(
+          leading: Icon(
+            Icons.language,
+            color: AppTheme.accentOrange,
+          ),
+          title: Text(
+            l10n.language,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            languageService.getLanguageName(languageService.locale.languageCode),
+            style: const TextStyle(fontSize: 14),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _showLanguageSelectionDialog(languageService),
+        );
+      },
+    );
+  }
+  void _showLanguageSelectionDialog(LanguageService languageService) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.language, color: AppTheme.accentOrange),
+              const SizedBox(width: 8),
+              Text(l10n.language),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: LanguageService.supportedLocales.map((locale) {
+              final isSelected = languageService.locale.languageCode == locale.languageCode;
+              return ListTile(
+                leading: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSelected ? AppTheme.accentOrange : Colors.transparent,
+                    border: Border.all(
+                      color: isSelected ? AppTheme.accentOrange : Colors.grey,
+                      width: 2,
+                    ),
+                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check, size: 16, color: Colors.white)
+                      : null,
+                ),
+                title: Text(
+                  languageService.getLanguageName(locale.languageCode),
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? AppTheme.accentOrange : Colors.black87,
+                  ),
+                ),
+                subtitle: Text(
+                  languageService.getLanguageNameInEnglish(locale.languageCode),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                onTap: () async {
+                  await languageService.setLanguage(locale);
+                  Navigator.of(context).pop();
+                  
+                  // Show success message
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.check_circle, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Text('Language changed to ${languageService.getLanguageName(locale.languageCode)}'),
+                          ],
+                        ),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    );
+                  }
+                },
+              );
+            }).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: AppTheme.accentOrange),
+              ),
+            ),
+          ],
         );
       },
     );

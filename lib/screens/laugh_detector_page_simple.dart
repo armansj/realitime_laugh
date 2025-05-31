@@ -11,6 +11,7 @@ import '../widgets/progress_bar.dart';
 import '../widgets/celebration_widgets.dart';
 import '../widgets/score_widget.dart';
 import '../main.dart';
+import '../l10n/app_localizations.dart';
 
 class LaughDetectorPageSimple extends StatefulWidget {
   const LaughDetectorPageSimple({super.key});
@@ -28,12 +29,13 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
   String _initializationError = '';
   
   // Add GlobalKey for ScoreWidget
-  final GlobalKey<ScoreWidgetState> _scoreWidgetKey = GlobalKey<ScoreWidgetState>();
-  // Detection state - simple like your working code
+  final GlobalKey<ScoreWidgetState> _scoreWidgetKey = GlobalKey<ScoreWidgetState>();  // Detection state - simple like your working code
   double _mouthOpen = 0.0;
   double _smileProb = 0.0;
   String _laughLevel = "none";
   double _smileProgress = 0.0;
+  bool _isLive = true;
+  bool _showSpoofingWarning = false;
   // Timer and animation variables
   DateTime? _progressStartTime;
   bool _showStarAnimation = false;
@@ -169,11 +171,10 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
         // Skip if already processing or game is completed
         if (_faceDetectionService.isDetecting || _gameCompleted) return;
 
-        try {
-          final faceResult = await _faceDetectionService.analyzeFace(image);          if (mounted && !_gameCompleted) {
+        try {          final faceResult = await _faceDetectionService.analyzeFace(image);          if (mounted && !_gameCompleted) {
             if (faceResult.isEmpty) {
               // Only update smile progress, don't reset game session
-              _updateSmileProgress(0.0, 0.0, false, false);
+              _updateSmileProgress(0.0, 0.0, false, false, true);
             } else {
               // Start the game session when face is first detected
               if (!_gameStarted) {
@@ -183,7 +184,13 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
                 });
                 _startCountdownTimer();
               }
-              _updateSmileProgress(faceResult.smileProb, faceResult.mouthOpen, faceResult.cheekRaised, faceResult.eyeWrinkleDetected);
+              _updateSmileProgress(
+                faceResult.smileProb, 
+                faceResult.mouthOpen, 
+                faceResult.cheekRaised, 
+                faceResult.eyeWrinkleDetected,
+                faceResult.isLive
+              );
             }
           }
         } catch (e) {
@@ -195,10 +202,25 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
       print('Image stream error: $e');
     }
   }// Use the exact algorithm from your working code but with more challenging thresholds
-  void _updateSmileProgress(double smileProb, double mouthOpen, bool cheekRaised, bool eyeWrinkleDetected) {
+  void _updateSmileProgress(double smileProb, double mouthOpen, bool cheekRaised, bool eyeWrinkleDetected, bool isLive) {
     // Stop detection if game is completed
     if (_gameCompleted) {
       return;
+    }
+
+    // Update liveness status
+    setState(() {
+      _isLive = isLive;
+      _showSpoofingWarning = !isLive;
+    });
+
+    // If face is detected as static/spoofed, show warning and reduce detection sensitivity
+    if (!isLive) {
+      // Still process but with heavily reduced sensitivity
+      smileProb *= 0.2;
+      mouthOpen *= 0.2;
+      cheekRaised = false;
+      eyeWrinkleDetected = false;
     }
 
     String laughLevel = "none";
@@ -256,9 +278,7 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
         setState(() {
           _gameScore = _calculateGameScore(_starsEarned, completionTime, laughDuration);
           // Don't show score display yet - wait for reset button click
-        });
-        
-        // Award money based on stars earned
+        });        // Award money based on stars earned
         int moneyToAward = _calculateMoneyReward(_starsEarned);
         if (moneyToAward > 0) {
           try {
@@ -266,6 +286,16 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
             print('Awarded $moneyToAward money for $_starsEarned stars');
           } catch (e) {
             print('Error awarding money: $e');
+          }
+        }
+        
+        // Award bonus star for perfect 3-star performance
+        if (_starsEarned == 3) {
+          try {
+            await _authService.addStars(1); // Give 1 bonus star for 3-star performance
+            print('Awarded 1 bonus star for perfect 3-star performance!');
+          } catch (e) {
+            print('Error awarding bonus star: $e');
           }
         }
         
@@ -365,8 +395,7 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
   }
     void _actualResetGame() {
     _countdownTimer?.cancel();
-    _timerController.reset();
-    setState(() {
+    _timerController.reset();    setState(() {
       _smileProgress = 0.0;
       _progressStartTime = null;
       _gameCompleted = false;
@@ -377,7 +406,12 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
       _showScoreDisplay = false;
       _laughLevel = "none";
       _remainingSeconds = 15;
+      _isLive = true; // Reset liveness status
+      _showSpoofingWarning = false; // Reset spoofing warning
     });
+    
+    // Reset anti-spoofing detection
+    _faceDetectionService.resetAntiSpoofing();
   }void _triggerStarAnimation() {
     setState(() {
       _showStarAnimation = true;
@@ -411,16 +445,16 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     _faceDetectionService.dispose();
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
-    // Always show something to prevent blank screen
+    final l10n = AppLocalizations.of(context)!;
+      // Always show something to prevent blank screen
     if (_initializationError.isNotEmpty) {
-      return _buildErrorScreen();
+      return _buildErrorScreen(l10n);
     }
     
     if (!_isInitialized || !_cameraController.value.isInitialized) {
-      return _buildLoadingScreen();
+      return _buildLoadingScreen(l10n);
     }
     
     return Scaffold(
@@ -429,9 +463,8 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
       body: SafeArea(
         child: Column(
           children: [
-            // Countdown Timer at the top
-            if (_gameStarted && !_gameCompleted)
-              _buildCountdownTimer(),
+            // Countdown Timer at the top            if (_gameStarted && !_gameCompleted)
+              _buildCountdownTimer(l10n),
             
             // Camera preview with overlays
             Expanded(
@@ -452,7 +485,18 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
                       gameCompleted: _gameCompleted,
                       starsEarned: _starsEarned,
                     ),
-                  ),                  // Progress bar at bottom
+                  ),
+
+                  // Anti-spoofing warning overlay
+                  if (_showSpoofingWarning && _gameStarted && !_gameCompleted)
+                    Positioned(
+                      top: MediaQuery.of(context).size.height * 0.3,
+                      left: 20,
+                      right: 20,
+                      child: _buildSpoofingWarning(),
+                    ),
+
+                  // Progress bar at bottom
                 Positioned(
                   bottom: _gameCompleted ? 120 : 50,
                   left: 12,
@@ -517,7 +561,7 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     );
   }
 
-  Widget _buildLoadingScreen() {
+  Widget _buildLoadingScreen(AppLocalizations l10n) {
     return Scaffold(
       backgroundColor: AppTheme.primaryYellow,
       body: Center(
@@ -531,9 +575,8 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
             ),
             const SizedBox(height: 20),
             const CircularProgressIndicator(color: Colors.amber),
-            const SizedBox(height: 20),
-            Text(
-              'Preparing Laugh Detector...',
+            const SizedBox(height: 20),            Text(
+              l10n.preparingLaughDetector,
               style: AppTheme.bodyStyle.copyWith(fontSize: 18),
             ),
           ],
@@ -542,7 +585,7 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     );
   }
 
-  Widget _buildErrorScreen() {
+  Widget _buildErrorScreen(AppLocalizations l10n) {
     return Scaffold(
       backgroundColor: AppTheme.primaryYellow,
       body: Center(
@@ -554,9 +597,8 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
               size: 80,
               color: Colors.red,
             ),
-            const SizedBox(height: 20),
-            Text(
-              'Camera Error',
+            const SizedBox(height: 20),            Text(
+              l10n.cameraError,
               style: AppTheme.titleStyle.copyWith(fontSize: 24),
             ),
             const SizedBox(height: 10),
@@ -581,7 +623,7 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
                 backgroundColor: Colors.amber,
                 foregroundColor: Colors.brown.shade800,
               ),
-              child: const Text('Retry'),
+              child: Text(l10n.retry),
             ),
           ],
         ),
@@ -591,22 +633,30 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     return AppBar(
       backgroundColor: Colors.amber.shade300,
       elevation: 0,
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.sentiment_very_satisfied, color: Colors.brown),
-          const SizedBox(width: 8),
-          Text(
-            '',
-            style: TextStyle(
-              color: Colors.brown.shade800,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
-        ],
+      title: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>?>(
+        stream: _authService.getUserDataStream(),
+        builder: (context, snapshot) {
+          final userData = snapshot.data?.data();
+          final username = userData?['username'] ?? 'Player';
+          
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.sentiment_very_satisfied, color: Colors.brown),
+              const SizedBox(width: 8),
+              Text(
+                username,
+                style: TextStyle(
+                  color: Colors.brown.shade800,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          );
+        },
       ),
-      centerTitle: false,      actions: [
+      centerTitle: false,actions: [
         // Profile picture with country flag
         Padding(
           padding: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
@@ -726,7 +776,56 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
       default:
         return "Keep trying! You can do it! 💪";
     }
-  }  Widget _buildCountdownTimer() {
+  }
+
+  Widget _buildSpoofingWarning() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.shade100.withOpacity(0.95),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red.shade400, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withOpacity(0.3),
+            blurRadius: 8,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.red.shade700,
+            size: 32,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Static Image Detected!",
+            style: TextStyle(
+              color: Colors.red.shade800,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "Please use live camera feed\nBlink or move your head slightly",
+            style: TextStyle(
+              color: Colors.red.shade700,
+              fontSize: 12,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCountdownTimer(AppLocalizations l10n) {
     double progress = _remainingSeconds / 15.0;
     
     return Container(
@@ -755,9 +854,8 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
                 color: Colors.brown.shade700,
                 size: 16,
               ),
-              const SizedBox(width: 4),
-              Text(
-                'Time for 3 Stars: ${_remainingSeconds}s',
+              const SizedBox(width: 4),              Text(
+                l10n.timeForThreeStars(_remainingSeconds),
                 style: TextStyle(
                   color: Colors.brown.shade800,
                   fontWeight: FontWeight.bold,

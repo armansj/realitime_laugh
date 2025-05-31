@@ -7,6 +7,7 @@ import 'laugh_detector_page_simple.dart';
 import 'shop_page.dart';
 import 'settings_page.dart';
 import 'leaderboard_page.dart';
+import '../l10n/app_localizations.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -118,10 +119,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       context,
       MaterialPageRoute(builder: (context) => const LeaderboardPage()),
     );
-  }
-  @override
+  }  @override
   Widget build(BuildContext context) {
     final user = _authService.currentUser;
+    final l10n = AppLocalizations.of(context)!;
     
     return Scaffold(
       body: Container(
@@ -180,7 +181,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       padding: const EdgeInsets.symmetric(horizontal: 40.0),
                       child: SlideTransition(
                         position: _slideAnimation,
-                        child: _buildStartGameButton(),
+                        child: _buildStartGameButton(l10n),
                       ),
                     ),
                     
@@ -304,11 +305,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 const SizedBox(height: 8),
                 // Stars and Money display
                 Row(
-                  children: [
-                    Icon(Icons.star, color: Colors.amber, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${userData?['stars'] ?? 0}',
+                  children: [                    Icon(Icons.star, color: Colors.amber, size: 16),
+                    const SizedBox(width: 4),                    Text(
+                      '${userData?['stars'] ?? 100}',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -326,42 +325,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         color: Colors.black87,
                       ),
                     ),
-                  ],
-                ),
+                  ],                ),
               ],
             ),
-          ),
-          
-          // Reset button for development
-          Column(
-            children: [
-              IconButton(
-                onPressed: () async {
-                  await _authService.resetUserStats();
-                  // StreamBuilder will automatically refresh the UI
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Stats reset successfully!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                },
-                icon: Icon(
-                  Icons.refresh,
-                  color: AppTheme.accentOrange,
-                  size: 24,
-                ),
-                tooltip: 'Reset Stats',
-              ),
-              Text(
-                'Reset',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppTheme.accentOrange,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -437,7 +403,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ],
     );
   }
-  Widget _buildStartGameButton() {
+  Widget _buildStartGameButton(AppLocalizations l10n) {
     return AnimatedBuilder(
       animation: Listenable.merge([_pulseAnimation, _buttonScaleAnimation]),
       builder: (context, child) {
@@ -480,11 +446,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   const Icon(
                     Icons.play_arrow,
                     size: 28,
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Start Game',
-                    style: TextStyle(
+                  ),                  const SizedBox(width: 8),
+                  Text(
+                    l10n.startGame,
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
