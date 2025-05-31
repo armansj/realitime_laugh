@@ -8,10 +8,10 @@ class AudioService {
   
   AudioService._();
   final AudioPlayer _backgroundMusicPlayer = AudioPlayer();
-  
-  bool _isBackgroundMusicEnabled = true;
+    bool _isBackgroundMusicEnabled = true;
   bool _isSoundEffectsEnabled = true;
   bool _isBackgroundMusicPlaying = false;
+  bool _wasPlayingBeforePause = false;
   
   bool get isBackgroundMusicEnabled => _isBackgroundMusicEnabled;
   bool get isSoundEffectsEnabled => _isSoundEffectsEnabled;
@@ -48,7 +48,6 @@ class AudioService {
       print('Error starting background music: $e');
     }
   }
-
   /// Stop background music
   Future<void> stopBackgroundMusic() async {
     if (!_isBackgroundMusicPlaying) return;
@@ -56,17 +55,18 @@ class AudioService {
     try {
       await _backgroundMusicPlayer.stop();
       _isBackgroundMusicPlaying = false;
+      _wasPlayingBeforePause = false;
       print('Background music stopped');
     } catch (e) {
       print('Error stopping background music: $e');
     }
   }
-
   /// Pause background music
   Future<void> pauseBackgroundMusic() async {
     if (!_isBackgroundMusicPlaying) return;
     
     try {
+      _wasPlayingBeforePause = true;
       await _backgroundMusicPlayer.pause();
       print('Background music paused');
     } catch (e) {
@@ -76,15 +76,16 @@ class AudioService {
 
   /// Resume background music
   Future<void> resumeBackgroundMusic() async {
-    if (!_isBackgroundMusicEnabled) return;
+    if (!_isBackgroundMusicEnabled || !_wasPlayingBeforePause) return;
     
     try {
       await _backgroundMusicPlayer.resume();
+      _wasPlayingBeforePause = false;
       print('Background music resumed');
     } catch (e) {
       print('Error resuming background music: $e');
     }
-  }  /// Play tick sound for countdown
+  }/// Play tick sound for countdown
   Future<void> playTickSound() async {
     if (!_isSoundEffectsEnabled) return;
     
@@ -129,7 +130,7 @@ class AudioService {
 
   /// Resume background music when exiting game mode
   Future<void> exitGameMode() async {
-    if (_isBackgroundMusicEnabled) {
+    if (_isBackgroundMusicEnabled && _wasPlayingBeforePause) {
       await resumeBackgroundMusic();
       print('Game mode exited - background music resumed');
     }

@@ -34,8 +34,57 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    // Register app lifecycle observer
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    // Unregister app lifecycle observer
+    WidgetsBinding.instance.removeObserver(this);
+    // Dispose audio service
+    AudioService.instance.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        // App is going to background or being closed
+        AudioService.instance.pauseBackgroundMusic();
+        break;
+      case AppLifecycleState.resumed:
+        // App is coming back to foreground
+        if (AudioService.instance.isBackgroundMusicEnabled) {
+          AudioService.instance.resumeBackgroundMusic();
+        }
+        break;
+      case AppLifecycleState.inactive:
+        // App is inactive (like when receiving a phone call)
+        AudioService.instance.pauseBackgroundMusic();
+        break;
+      case AppLifecycleState.hidden:
+        // App is hidden but still running
+        AudioService.instance.pauseBackgroundMusic();
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<LanguageService>(
