@@ -11,7 +11,7 @@ class FaceDetectionService {
   bool isDetecting = false;
 
   // Anti-spoofing variables
-  List<Map<String, dynamic>> _recentFaceData = [];
+  final List<Map<String, dynamic>> _recentFaceData = [];
   DateTime? _lastBlinkTime;
   double? _lastHeadPoseX;
   double? _lastHeadPoseY;

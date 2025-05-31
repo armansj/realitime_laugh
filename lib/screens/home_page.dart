@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/auth_service.dart';
 import '../utils/app_theme.dart';
+import '../services/audio_service.dart';
 import 'laugh_detector_page_simple.dart';
 import 'shop_page.dart';
 import 'settings_page.dart';
@@ -69,12 +70,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _buttonScaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
       CurvedAnimation(parent: _buttonPressController, curve: Curves.easeInOut),
     );
-    
-    _fadeController.forward();
+      _fadeController.forward();
     _slideController.forward();
     
     // Start pulse animation and repeat
     _pulseController.repeat(reverse: true);
+    
+    // Initialize audio service and start background music
+    _initializeAudio();
     
     // Initialize location on first app load
     _initializeLocationIfNeeded();
@@ -87,39 +90,43 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _pulseController.dispose();
     _buttonPressController.dispose();
     super.dispose();
-  }
-  
-  void _startGame() async {
+  }  void _startGame() async {
     // Button press animation
     await _buttonPressController.forward();
     await _buttonPressController.reverse();
     
+    // Pause background music when entering game
+    AudioService.instance.enterGameMode();
+    
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const LaughDetectorPageSimple()),
-    );
+    ).then((_) {
+      // Resume background music when returning from game
+      AudioService.instance.exitGameMode();
+    });
   }
 
-  void _openShop() {
+  void _openShop() async {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const ShopPage()),
     );
   }
 
-  void _openSettings() {
+  void _openSettings() async {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const SettingsPage()),
     );
   }
 
-  void _openLeaderboard() {
+  void _openLeaderboard() async {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const LeaderboardPage()),
     );
-  }  @override
+  }@override
   Widget build(BuildContext context) {
     final user = _authService.currentUser;
     final l10n = AppLocalizations.of(context)!;
@@ -696,6 +703,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     } catch (e) {
       print('Error initializing location: $e');
       // Don't show error to user as this is a background process
+    }
+  }
+
+  // Initialize audio service and start background music
+  Future<void> _initializeAudio() async {
+    try {
+      await AudioService.instance.initialize();
+      // Start background music after a short delay to let the page load
+      await Future.delayed(const Duration(milliseconds: 500));
+      await AudioService.instance.startBackgroundMusic();
+    } catch (e) {
+      print('Error initializing audio service: $e');
     }
   }
 }

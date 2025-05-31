@@ -7,6 +7,7 @@ import 'utils/app_theme.dart';
 import 'screens/auth_wrapper.dart';
 import 'firebase_options.dart';
 import 'services/language_service.dart';
+import 'services/audio_service.dart';
 import 'l10n/app_localizations.dart';
 
 List<CameraDescription> cameras = [];
@@ -21,6 +22,9 @@ void main() async {
   
   // Initialize cameras
   cameras = await availableCameras();
+  
+  // Initialize audio service
+  await AudioService.instance.initialize();
   
   runApp(
     ChangeNotifierProvider(

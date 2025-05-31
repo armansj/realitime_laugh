@@ -5,6 +5,7 @@ import '../models/auth_service.dart';
 import '../models/emoji_profile_service.dart';
 import '../utils/app_theme.dart';
 import '../services/language_service.dart';
+import '../services/audio_service.dart';
 import '../l10n/app_localizations.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -17,9 +18,24 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final AuthService _authService = AuthService();
   bool _soundEnabled = true;
+  bool _backgroundMusicEnabled = true;
   bool _vibrationEnabled = true;
   bool _notificationsEnabled = true;
   double _sensitivity = 0.5;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadAudioSettings();
+  }
+  
+  Future<void> _loadAudioSettings() async {
+    final audioService = AudioService.instance;
+    setState(() {
+      _soundEnabled = audioService.isSoundEffectsEnabled;
+      _backgroundMusicEnabled = audioService.isBackgroundMusicEnabled;
+    });
+  }
   @override
   Widget build(BuildContext context) {
     final user = _authService.currentUser;
@@ -73,17 +89,27 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 20),            // Game Settings
             _buildSection(
               title: l10n.gameSettings,
-              children: [                _buildSwitchTile(
+              children: [
+                _buildSwitchTile(
+                  icon: Icons.music_note,
+                  title: 'Background Music',
+                  subtitle: 'Play cozy background music',
+                  value: _backgroundMusicEnabled,                  onChanged: (value) async {
+                    setState(() {
+                      _backgroundMusicEnabled = value;
+                    });                    await AudioService.instance.setBackgroundMusicEnabled(value);
+                  },
+                ),
+                _buildSwitchTile(
                   icon: Icons.volume_up,
                   title: l10n.soundEffects,
                   subtitle: l10n.enableGameSounds,
-                  value: _soundEnabled,
-                  onChanged: (value) {
+                  value: _soundEnabled,                  onChanged: (value) async {
                     setState(() {
                       _soundEnabled = value;
-                    });
+                    });                    await AudioService.instance.setSoundEffectsEnabled(value);
                   },
-                ),                _buildSwitchTile(
+                ),_buildSwitchTile(
                   icon: Icons.vibration,
                   title: l10n.vibration,
                   subtitle: l10n.enableHapticFeedback,

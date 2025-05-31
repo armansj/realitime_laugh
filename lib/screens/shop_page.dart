@@ -306,7 +306,7 @@ class _ShopPageState extends State<ShopPage> {
             const SizedBox(height: 12),
             
             // Shop Items
-            ..._items.map((item) => _buildShopItem(item)).toList(),
+            ..._items.map((item) => _buildShopItem(item)),
           ],
         ),
       ),

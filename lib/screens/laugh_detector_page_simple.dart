@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/face_detection_service.dart';
 import '../models/firebase_score_manager.dart';
 import '../models/auth_service.dart';
+import '../services/audio_service.dart';
 import '../utils/app_theme.dart';
 import '../widgets/debug_panel.dart';
 import '../widgets/progress_bar.dart';
@@ -355,22 +356,28 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
       default:
         return 2;  // 2 money for participation (even if no stars)
     }
-  }
-  void _startCountdownTimer() {
+  }  void _startCountdownTimer() {
     _remainingSeconds = 15;
     _timerController.reset();
     _timerController.forward();
     
     _countdownTimer?.cancel();
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       if (_remainingSeconds > 0 && !_gameCompleted) {
         setState(() {
           _remainingSeconds--;
         });
+        
+        // Play tick sound in last 5 seconds
+        if (_remainingSeconds <= 5 && _remainingSeconds > 0) {
+          await AudioService.instance.playTickSound();
+        }
       } else {
         timer.cancel();
         if (!_gameCompleted) {
-          // Time's up - always complete the game regardless of progress
+          // Time's up - play vibration feedback
+          await AudioService.instance.playTimesUpVibration();
+          // Complete the game regardless of progress
           _completeGame();
         }
       }
