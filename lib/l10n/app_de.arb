@@ -67,8 +67,15 @@
   "changeYourDisplayName": "Anzeigename ändern",
   "termsOfService": "Nutzungsbedingungen",
   "viewTermsAndConditions": "Allgemeine Geschäftsbedingungen anzeigen",
-  "preparingLaughDetector": "Lachen-Detektor wird vorbereitet...",
-  "cameraError": "Kamera-Fehler",
-  "retry": "Wiederholen",
-  "timeForThreeStars": "Zeit für 3 Sterne: {seconds}s"
+  "preparingLaughDetector": "Lachen-Detektor wird vorbereitet...",  "cameraError": "Kamera-Fehler",
+  "retry": "Wiederholen",  "findingPlayers": "Spieler suchen",
+  "timeForThreeStars": "Zeit für 3 Sterne: {seconds}s",
+  "challenges": "Herausforderungen",
+  "selectChallenge": "Wähle eine Herausforderung",
+  "challengeDescription": "Teste deine Selbstbeherrschung mit diesen lustigen Herausforderungen!",
+  "dontLaughChallenge": "Nicht-Lachen-Challenge",
+  "dontLaughDescription": "Versuche nicht zu lachen, während du lustige Inhalte anschaust",
+  "comingSoon": "Kommt bald!",
+  "stayTuned": "Bleib dran für weitere aufregende Herausforderungen",
+  "moreChallengesToCome": "Weitere aufregende Herausforderungen werden entwickelt. Bleib dran!"
 }

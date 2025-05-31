@@ -144,6 +144,9 @@ class AppLocalizationsFa extends AppLocalizations {
   String get startGame => 'شروع بازی';
 
   @override
+  String get findingPlayers => 'جستجوی بازیکنان';
+
+  @override
   String get gameInstructions =>
       'خودتان را به خنده بیاندازید تا امتیاز کسب کنید!';
 
@@ -238,4 +241,31 @@ class AppLocalizationsFa extends AppLocalizations {
   String timeForThreeStars(int seconds) {
     return 'زمان برای ۳ ستاره: $seconds ثانیه';
   }
+
+  @override
+  String get challenges => 'Challenges';
+
+  @override
+  String get selectChallenge => 'Select a Challenge';
+
+  @override
+  String get challengeDescription =>
+      'Test your self-control with these fun challenges!';
+
+  @override
+  String get dontLaughChallenge => 'Don\'t Laugh Challenge';
+
+  @override
+  String get dontLaughDescription =>
+      'Try not to laugh while watching funny content';
+
+  @override
+  String get comingSoon => 'Coming Soon!';
+
+  @override
+  String get stayTuned => 'Stay tuned for more exciting challenges';
+
+  @override
+  String get moreChallengesToCome =>
+      'More exciting challenges are being developed. Stay tuned!';
 }

@@ -358,6 +358,12 @@ abstract class AppLocalizations {
   /// **'Start Game'**
   String get startGame;
 
+  /// Finding players screen title
+  ///
+  /// In en, this message translates to:
+  /// **'Finding Players'**
+  String get findingPlayers;
+
   /// Game instructions text
   ///
   /// In en, this message translates to:
@@ -543,6 +549,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Time for 3 Stars: {seconds}s'**
   String timeForThreeStars(int seconds);
+
+  /// Challenges section title
+  ///
+  /// In en, this message translates to:
+  /// **'Challenges'**
+  String get challenges;
+
+  /// Select challenge prompt
+  ///
+  /// In en, this message translates to:
+  /// **'Select a Challenge'**
+  String get selectChallenge;
+
+  /// Challenge description text
+  ///
+  /// In en, this message translates to:
+  /// **'Test your self-control with these fun challenges!'**
+  String get challengeDescription;
+
+  /// Don't laugh challenge title
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t Laugh Challenge'**
+  String get dontLaughChallenge;
+
+  /// Don't laugh challenge description
+  ///
+  /// In en, this message translates to:
+  /// **'Try not to laugh while watching funny content'**
+  String get dontLaughDescription;
+
+  /// Coming soon text
+  ///
+  /// In en, this message translates to:
+  /// **'Coming Soon!'**
+  String get comingSoon;
+
+  /// Stay tuned message
+  ///
+  /// In en, this message translates to:
+  /// **'Stay tuned for more exciting challenges'**
+  String get stayTuned;
+
+  /// More challenges coming message
+  ///
+  /// In en, this message translates to:
+  /// **'More exciting challenges are being developed. Stay tuned!'**
+  String get moreChallengesToCome;
 }
 
 class _AppLocalizationsDelegate

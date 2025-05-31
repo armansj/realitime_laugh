@@ -188,10 +188,13 @@
   "laughDetectionGame": "Laugh Detection Game",
   "@laughDetectionGame": {
     "description": "Laugh detection game title"
-  },
-  "startGame": "Start Game",
+  },  "startGame": "Start Game",
   "@startGame": {
     "description": "Start game button text"
+  },
+  "findingPlayers": "Finding Players",
+  "@findingPlayers": {
+    "description": "Finding players screen title"
   },
   "gameInstructions": "Make yourself laugh to earn points!",
   "@gameInstructions": {
@@ -304,13 +307,10 @@
   },
   "cameraError": "Camera Error",
   "@cameraError": {
-    "description": "Camera error title"
-  },
-  "retry": "Retry",
+    "description": "Camera error title"  },  "retry": "Retry",
   "@retry": {
     "description": "Retry button text"
-  },
-  "timeForThreeStars": "Time for 3 Stars: {seconds}s",
+  },  "timeForThreeStars": "Time for 3 Stars: {seconds}s",
   "@timeForThreeStars": {
     "description": "Countdown timer for 3 stars",
     "placeholders": {
@@ -319,5 +319,36 @@
         "example": "30"
       }
     }
+  },
+  "challenges": "Challenges",
+  "@challenges": {
+    "description": "Challenges section title"
+  },
+  "selectChallenge": "Select a Challenge",
+  "@selectChallenge": {
+    "description": "Select challenge prompt"
+  },
+  "challengeDescription": "Test your self-control with these fun challenges!",
+  "@challengeDescription": {
+    "description": "Challenge description text"
+  },
+  "dontLaughChallenge": "Don't Laugh Challenge",
+  "@dontLaughChallenge": {
+    "description": "Don't laugh challenge title"
+  },
+  "dontLaughDescription": "Try not to laugh while watching funny content",
+  "@dontLaughDescription": {
+    "description": "Don't laugh challenge description"
+  },
+  "comingSoon": "Coming Soon!",
+  "@comingSoon": {
+    "description": "Coming soon text"
+  },
+  "stayTuned": "Stay tuned for more exciting challenges",
+  "@stayTuned": {
+    "description": "Stay tuned message"
+  },  "moreChallengesToCome": "More exciting challenges are being developed. Stay tuned!",
+  "@moreChallengesToCome": {
+    "description": "More challenges coming message"
   }
 }

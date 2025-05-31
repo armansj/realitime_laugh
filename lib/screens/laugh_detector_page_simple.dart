@@ -76,6 +76,9 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
     
     // Initialize location service
     await _authService.locationService.initialize();
+    
+    // Enter game mode to pause background music
+    await AudioService.instance.enterGameMode();
   }void _initializeAnimations() {
     _starAnimationController = AnimationController(
       duration: const Duration(milliseconds: 2000),
@@ -439,7 +442,6 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
         });
       }    });
   }
-
   @override
   void dispose() {
     _countdownTimer?.cancel();
@@ -451,6 +453,10 @@ class _LaughDetectorPageSimpleState extends State<LaughDetectorPageSimple>
       _cameraController.dispose();
     }
     _faceDetectionService.dispose();
+    
+    // Exit game mode to resume background music
+    AudioService.instance.exitGameMode();
+    
     super.dispose();
   }
   @override

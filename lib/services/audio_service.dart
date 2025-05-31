@@ -105,6 +105,26 @@ class AudioService {
       print('Error playing tick sound: $e');
     }
   }
+  /// Play crowd laugh sound effect
+  Future<void> playCrowdLaugh() async {
+    if (!_isSoundEffectsEnabled) return;
+    
+    try {
+      // Create a new player for crowd laugh sound
+      final crowdLaughPlayer = AudioPlayer();
+      await crowdLaughPlayer.setVolume(0.7); // Medium volume for crowd laugh
+      await crowdLaughPlayer.play(AssetSource('audio/crowd_laugh.mp3'));
+      
+      print('Crowd laugh sound played');
+      
+      // Dispose the player after the sound finishes
+      Future.delayed(const Duration(seconds: 3), () {
+        crowdLaughPlayer.dispose();
+      });
+    } catch (e) {
+      print('Error playing crowd laugh sound: $e');
+    }
+  }
 
   /// Provide vibration for time's up
   Future<void> playTimesUpVibration() async {
@@ -120,7 +140,7 @@ class AudioService {
     } catch (e) {
       print('Error providing times up vibration: $e');
     }
-  }  /// Pause background music when entering game mode
+  }/// Pause background music when entering game mode
   Future<void> enterGameMode() async {
     if (_isBackgroundMusicPlaying) {
       await pauseBackgroundMusic();

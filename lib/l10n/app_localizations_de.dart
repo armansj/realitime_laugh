@@ -144,6 +144,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get startGame => 'Spiel starten';
 
   @override
+  String get findingPlayers => 'Spieler suchen';
+
+  @override
   String get gameInstructions =>
       'Bring dich zum Lachen, um Punkte zu verdienen!';
 
@@ -239,4 +242,31 @@ class AppLocalizationsDe extends AppLocalizations {
   String timeForThreeStars(int seconds) {
     return 'Zeit für 3 Sterne: ${seconds}s';
   }
+
+  @override
+  String get challenges => 'Herausforderungen';
+
+  @override
+  String get selectChallenge => 'Wähle eine Herausforderung';
+
+  @override
+  String get challengeDescription =>
+      'Teste deine Selbstbeherrschung mit diesen lustigen Herausforderungen!';
+
+  @override
+  String get dontLaughChallenge => 'Nicht-Lachen-Challenge';
+
+  @override
+  String get dontLaughDescription =>
+      'Versuche nicht zu lachen, während du lustige Inhalte anschaust';
+
+  @override
+  String get comingSoon => 'Kommt bald!';
+
+  @override
+  String get stayTuned => 'Bleib dran für weitere aufregende Herausforderungen';
+
+  @override
+  String get moreChallengesToCome =>
+      'Weitere aufregende Herausforderungen werden entwickelt. Bleib dran!';
 }

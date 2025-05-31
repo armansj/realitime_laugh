@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/auth_service.dart';
+import '../models/firebase_score_manager.dart';
 import '../utils/app_theme.dart';
 import '../services/audio_service.dart';
-import 'laugh_detector_page_simple.dart';
+import 'finding_player_screen.dart';
 import 'shop_page.dart';
 import 'settings_page.dart';
 import 'leaderboard_page.dart';
+import 'challenges_page.dart';
 import '../l10n/app_localizations.dart';
 
 class HomePage extends StatefulWidget {
@@ -19,6 +21,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final AuthService _authService = AuthService();
+  final FirebaseScoreManager _scoreManager = FirebaseScoreManager();
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   late AnimationController _slideController;
@@ -75,12 +78,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     
     // Start pulse animation and repeat
     _pulseController.repeat(reverse: true);
-    
-    // Initialize audio service and start background music
+      // Initialize audio service and start background music
     _initializeAudio();
     
     // Initialize location on first app load
     _initializeLocationIfNeeded();
+    
+    // Initialize score manager to ensure challenge data is loaded
+    _scoreManager.initialize();
   }
   
   @override
@@ -92,15 +97,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     super.dispose();
   }  void _startGame() async {
     // Button press animation
-    await _buttonPressController.forward();
-    await _buttonPressController.reverse();
+    await _buttonPressController.forward();    await _buttonPressController.reverse();
     
     // Pause background music when entering game
     AudioService.instance.enterGameMode();
     
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const LaughDetectorPageSimple()),
+      MaterialPageRoute(builder: (context) => const FindingPlayerScreen()),
     ).then((_) {
       // Resume background music when returning from game
       AudioService.instance.exitGameMode();
@@ -120,11 +124,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       MaterialPageRoute(builder: (context) => const SettingsPage()),
     );
   }
-
   void _openLeaderboard() async {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const LeaderboardPage()),
+    );
+  }
+
+  void _openChallenges() async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ChallengesPage()),
     );
   }@override
   Widget build(BuildContext context) {
@@ -341,8 +351,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       )
     );
     
-  }
-  Widget _buildStatsSection(Map<String, dynamic>? userData) {
+  }  Widget _buildStatsSection(Map<String, dynamic>? userData) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -356,23 +365,52 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
         children: [
-          _buildStatItem(
-            icon: Icons.games,
-            label: 'Games',
-            value: '${userData?['gamesPlayed'] ?? 0}',
+          // Regular Game Stats Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatItem(
+                icon: Icons.games,
+                label: 'Games',
+                value: '${userData?['gamesPlayed'] ?? 0}',
+              ),
+              _buildStatItem(
+                icon: Icons.star,
+                label: '3-Stars',
+                value: '${userData?['threeStarGames'] ?? 0}',
+              ),
+              _buildStatItem(
+                icon: Icons.timer,
+                label: 'Laugh Time',
+                value: '${(userData?['totalLaughTime'] ?? 0)}s',
+              ),
+            ],
           ),
-          _buildStatItem(
-            icon: Icons.star,
-            label: '3-Stars',
-            value: '${userData?['threeStarGames'] ?? 0}',
-          ),
-          _buildStatItem(
-            icon: Icons.timer,
-            label: 'Laugh Time',
-            value: '${(userData?['totalLaughTime'] ?? 0)}s',
+          
+          const SizedBox(height: 12),
+          
+          // Challenge Stats Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatItem(
+                icon: Icons.emoji_events,
+                label: 'Challenges',
+                value: '${userData?['challengesCompleted'] ?? 0}',
+              ),
+              _buildStatItem(
+                icon: Icons.psychology,
+                label: 'Don\'t Laugh',
+                value: '${userData?['dontLaughWins'] ?? 0}',
+              ),
+              _buildStatItem(
+                icon: Icons.trending_up,
+                label: 'Best Streak',
+                value: '${userData?['bestDontLaughStreak'] ?? 0}',
+              ),
+            ],
           ),
         ],
       ),
@@ -492,6 +530,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           title: 'Leaderboard',
           subtitle: 'View rankings',
           onTap: _openLeaderboard,
+        ),        _buildMenuCard(
+          icon: Icons.emoji_events,
+          title: 'Challenges',
+          subtitle: 'Game modes',
+          onTap: _openChallenges,
         ),
         _buildMenuCard(
           icon: Icons.settings,

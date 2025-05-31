@@ -257,12 +257,66 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                   ),
                                   
                                   const SizedBox(height: 16),
-                                  
-                                  _buildStatItem(
+                                    _buildStatItem(
                                     'Total Laugh Time',
                                     '${_scoreData!['totalLaughTime']}s',
                                     Icons.timer,
                                     isFullWidth: true,
+                                  ),
+                                  
+                                  const SizedBox(height: 16),
+                                  
+                                  // Challenge Statistics Section
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          'Challenge Statistics',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.orange.shade700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            _buildStatItem(
+                                              'Challenges Completed',
+                                              '${_scoreData!['challengesCompleted'] ?? 0}',
+                                              Icons.emoji_events,
+                                            ),
+                                            _buildStatItem(
+                                              'Don\'t Laugh Wins',
+                                              '${_scoreData!['dontLaughWins'] ?? 0}',
+                                              Icons.psychology,
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            _buildStatItem(
+                                              'Challenge Score',
+                                              '${_scoreData!['challengeScore'] ?? 0}',
+                                              Icons.military_tech,
+                                            ),
+                                            _buildStatItem(
+                                              'Best Streak',
+                                              '${_scoreData!['bestDontLaughStreak'] ?? 0}',
+                                              Icons.trending_up,
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               )

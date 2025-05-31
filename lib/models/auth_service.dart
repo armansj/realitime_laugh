@@ -274,9 +274,15 @@ class AuthService {
           'displayName': user.displayName,
           'photoURL': user.photoURL,
           'username': '', // Will be set by updateUsername
-          'emojiProfile': defaultEmojiUnicode, // Default emoji profile as unicode
-          'totalScore': 0,
-          'userLevel': 1,          'gamesPlayed': 0,          'threeStarGames': 0,          'totalLaughTime': 0,
+          'emojiProfile': defaultEmojiUnicode, // Default emoji profile as unicode          'totalScore': 0,
+          'userLevel': 1,
+          'gamesPlayed': 0,
+          'threeStarGames': 0,
+          'totalLaughTime': 0,
+          'challengesCompleted': 0, // Challenge tracking
+          'dontLaughWins': 0, // Don't Laugh Challenge wins
+          'challengeScore': 0, // Total score from challenges
+          'bestDontLaughStreak': 0, // Best streak in Don't Laugh Challenge
           'stars': 5, // Starting stars for shop purchases
           'money': 50,  // Starting money
           'purchasedItems': [], // List of purchased shop items
@@ -317,6 +323,33 @@ class AuthService {
       }
     } catch (e) {
       print('Error updating user score: $e');
+      rethrow;
+    }
+  }
+
+  // Update challenge-specific data
+  Future<void> updateChallengeData({
+    required int challengesCompleted,
+    required int dontLaughWins,
+    required int challengeScore,
+    required int bestDontLaughStreak,
+  }) async {
+    try {
+      final user = currentUser;
+      if (user != null) {
+        // Ensure user document exists
+        await _ensureUserDocumentExists(user);
+        
+        await _firestore.collection('users').doc(user.uid).update({
+          'challengesCompleted': challengesCompleted,
+          'dontLaughWins': dontLaughWins,
+          'challengeScore': challengeScore,
+          'bestDontLaughStreak': bestDontLaughStreak,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      print('Error updating challenge data: $e');
       rethrow;
     }
   }
@@ -518,12 +551,16 @@ class AuthService {
       if (user != null) {
         // Ensure user document exists
         await _ensureUserDocumentExists(user);
-        
-        await _firestore.collection('users').doc(user.uid).update({
+          await _firestore.collection('users').doc(user.uid).update({
           'totalScore': 0,
-          'userLevel': 1,          'gamesPlayed': 0,
+          'userLevel': 1,
+          'gamesPlayed': 0,
           'threeStarGames': 0,
           'totalLaughTime': 0,
+          'challengesCompleted': 0, // Reset challenge data
+          'dontLaughWins': 0,
+          'challengeScore': 0,
+          'bestDontLaughStreak': 0,
           'stars': 5, // Reset to starting amount
           'money': 50,  // Reset to starting amount
           'updatedAt': FieldValue.serverTimestamp(),

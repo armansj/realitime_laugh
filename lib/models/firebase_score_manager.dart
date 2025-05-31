@@ -15,14 +15,19 @@ class FirebaseScoreManager {
   int _cachedThreeStarGames = 0;
   int _cachedTotalLaughTime = 0;
   
+  // Challenge-related cached values
+  int _cachedChallengesCompleted = 0;
+  int _cachedDontLaughWins = 0;
+  int _cachedChallengeScore = 0;
+  int _cachedBestDontLaughStreak = 0;
+  
   bool _isInitialized = false;
 
   // Initialize score manager - load from Firebase or local cache
   Future<void> initialize() async {
     if (_isInitialized) return;
     
-    try {
-      // Try to load from Firebase first
+    try {      // Try to load from Firebase first
       if (_authService.currentUser != null) {
         final userData = await _authService.getUserData();
         if (userData != null) {
@@ -31,6 +36,12 @@ class FirebaseScoreManager {
           _cachedGamesPlayed = userData['gamesPlayed'] ?? 0;
           _cachedThreeStarGames = userData['threeStarGames'] ?? 0;
           _cachedTotalLaughTime = userData['totalLaughTime'] ?? 0;
+          
+          // Load challenge data
+          _cachedChallengesCompleted = userData['challengesCompleted'] ?? 0;
+          _cachedDontLaughWins = userData['dontLaughWins'] ?? 0;
+          _cachedChallengeScore = userData['challengeScore'] ?? 0;
+          _cachedBestDontLaughStreak = userData['bestDontLaughStreak'] ?? 0;
           
           // Also save to local cache for offline support
           await _saveToLocalCache();
@@ -58,6 +69,12 @@ class FirebaseScoreManager {
     _cachedGamesPlayed = prefs.getInt('gamesPlayed') ?? 0;
     _cachedThreeStarGames = prefs.getInt('threeStarGames') ?? 0;
     _cachedTotalLaughTime = prefs.getInt('totalLaughTime') ?? 0;
+    
+    // Load challenge-related cached values
+    _cachedChallengesCompleted = prefs.getInt('challengesCompleted') ?? 0;
+    _cachedDontLaughWins = prefs.getInt('dontLaughWins') ?? 0;
+    _cachedChallengeScore = prefs.getInt('challengeScore') ?? 0;
+    _cachedBestDontLaughStreak = prefs.getInt('bestDontLaughStreak') ?? 0;
   }
 
   // Save scores to SharedPreferences (offline cache)
@@ -68,6 +85,12 @@ class FirebaseScoreManager {
     await prefs.setInt('gamesPlayed', _cachedGamesPlayed);
     await prefs.setInt('threeStarGames', _cachedThreeStarGames);
     await prefs.setInt('totalLaughTime', _cachedTotalLaughTime);
+    
+    // Save challenge-related cached values
+    await prefs.setInt('challengesCompleted', _cachedChallengesCompleted);
+    await prefs.setInt('dontLaughWins', _cachedDontLaughWins);
+    await prefs.setInt('challengeScore', _cachedChallengeScore);
+    await prefs.setInt('bestDontLaughStreak', _cachedBestDontLaughStreak);
   }
 
   // Add game result and sync with Firebase
@@ -168,6 +191,11 @@ class FirebaseScoreManager {
       'totalLaughTime': _cachedTotalLaughTime,
       'nextLevelScore': _getNextLevelScore(_cachedUserLevel),
       'currentLevelProgress': _getCurrentLevelProgress(_cachedTotalScore, _cachedUserLevel),
+      // Challenge-related scores
+      'challengesCompleted': _cachedChallengesCompleted,
+      'dontLaughWins': _cachedDontLaughWins,
+      'challengeScore': _cachedChallengeScore,
+      'bestDontLaughStreak': _cachedBestDontLaughStreak,
     };
   }
 
@@ -217,6 +245,118 @@ class FirebaseScoreManager {
     }
   }
 
+  // Add Don't Laugh Challenge result
+  Future<void> addDontLaughChallengeResult({
+    required bool won,
+    required int streak,
+    required double challengeDuration,
+  }) async {
+    await initialize();
+    
+    // Update challenge-specific stats
+    _cachedChallengesCompleted++;
+    if (won) {
+      _cachedDontLaughWins++;
+    }
+    
+    // Update best streak if this one is better
+    if (streak > _cachedBestDontLaughStreak) {
+      _cachedBestDontLaughStreak = streak;
+    }
+    
+    // Calculate challenge score
+    int challengePoints = _calculateChallengeScore(won, streak, challengeDuration);
+    _cachedChallengeScore += challengePoints;
+    
+    // Add challenge points to total score for overall progression
+    _cachedTotalScore += challengePoints;
+    
+    // Recalculate level
+    _cachedUserLevel = _calculateLevel(_cachedTotalScore);
+    
+    // Save to local cache
+    await _saveToLocalCache();
+    
+    // Try to update Firebase
+    try {
+      if (_authService.currentUser != null) {
+        await _authService.updateUserScore(
+          totalScore: _cachedTotalScore,
+          userLevel: _cachedUserLevel,
+          gamesPlayed: _cachedGamesPlayed,
+          threeStarGames: _cachedThreeStarGames,
+          totalLaughTime: _cachedTotalLaughTime,
+        );
+        
+        // Update challenge-specific data in Firebase
+        await _authService.updateChallengeData(
+          challengesCompleted: _cachedChallengesCompleted,
+          dontLaughWins: _cachedDontLaughWins,
+          challengeScore: _cachedChallengeScore,
+          bestDontLaughStreak: _cachedBestDontLaughStreak,
+        );
+        
+        print('Successfully updated challenge data in Firebase');
+      }
+    } catch (e) {
+      print('Error updating Firebase with challenge data: $e');
+    }
+  }
+  
+  // Calculate score for challenge completion
+  int _calculateChallengeScore(bool won, int streak, double challengeDuration) {
+    int baseScore = won ? 200 : 50; // Base points for attempting/winning
+    
+    // Streak bonus (up to 100 points)
+    int streakBonus = (streak * 20).clamp(0, 100);
+    
+    // Duration bonus for longer challenges (up to 50 points)
+    int durationBonus = (challengeDuration / 10 * 10).round().clamp(0, 50);
+    
+    return baseScore + streakBonus + durationBonus;
+  }
+  
+  // Add general challenge completion
+  Future<void> addChallengeCompletion({
+    required String challengeType,
+    required bool completed,
+    required int score,
+  }) async {
+    await initialize();
+    
+    _cachedChallengesCompleted++;
+    _cachedChallengeScore += score;
+    _cachedTotalScore += score;
+    
+    // Recalculate level
+    _cachedUserLevel = _calculateLevel(_cachedTotalScore);
+    
+    // Save to local cache
+    await _saveToLocalCache();
+    
+    // Try to update Firebase
+    try {
+      if (_authService.currentUser != null) {
+        await _authService.updateUserScore(
+          totalScore: _cachedTotalScore,
+          userLevel: _cachedUserLevel,
+          gamesPlayed: _cachedGamesPlayed,
+          threeStarGames: _cachedThreeStarGames,
+          totalLaughTime: _cachedTotalLaughTime,
+        );
+        
+        await _authService.updateChallengeData(
+          challengesCompleted: _cachedChallengesCompleted,
+          dontLaughWins: _cachedDontLaughWins,
+          challengeScore: _cachedChallengeScore,
+          bestDontLaughStreak: _cachedBestDontLaughStreak,
+        );
+      }
+    } catch (e) {
+      print('Error updating Firebase with challenge data: $e');
+    }
+  }
+
   // Reset scores (for testing)
   Future<void> resetScores() async {
     _cachedTotalScore = 0;
@@ -224,6 +364,12 @@ class FirebaseScoreManager {
     _cachedGamesPlayed = 0;
     _cachedThreeStarGames = 0;
     _cachedTotalLaughTime = 0;
+    
+    // Reset challenge-related cached values
+    _cachedChallengesCompleted = 0;
+    _cachedDontLaughWins = 0;
+    _cachedChallengeScore = 0;
+    _cachedBestDontLaughStreak = 0;
     
     await _saveToLocalCache();
     
@@ -280,4 +426,8 @@ class FirebaseScoreManager {
   int get gamesPlayed => _cachedGamesPlayed;
   int get threeStarGames => _cachedThreeStarGames;
   int get totalLaughTime => _cachedTotalLaughTime;
+  int get challengesCompleted => _cachedChallengesCompleted;
+  int get dontLaughWins => _cachedDontLaughWins;
+  int get challengeScore => _cachedChallengeScore;
+  int get bestDontLaughStreak => _cachedBestDontLaughStreak;
 }

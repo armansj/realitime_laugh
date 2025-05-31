@@ -67,8 +67,8 @@
   "changeYourDisplayName": "تغییر نام نمایشی",
   "termsOfService": "شرایط خدمات",
   "viewTermsAndConditions": "مشاهده شرایط و ضوابط",
-  "preparingLaughDetector": "آماده‌سازی تشخیص‌گر خنده...",
-  "cameraError": "خطای دوربین",
+  "preparingLaughDetector": "آماده‌سازی تشخیص‌گر خنده...",  "cameraError": "خطای دوربین",
   "retry": "تلاش مجدد",
+  "findingPlayers": "جستجوی بازیکنان",
   "timeForThreeStars": "زمان برای ۳ ستاره: {seconds} ثانیه"
 }
